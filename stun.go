@@ -2,117 +2,118 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/binary"
+	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
-	"net/http"
+	"time"
 )
 
-const (
-	SERVER_ADDR = "https://www.hana-sweet.top/nyaa/"
-)
-
-type Node struct {
-	Id       string           `json:"id"` // Path
-	Describe string           `json:"describe"`
-	Endpoint string           `json:"endpoint"`
-	Peer     map[string]int64 `json:"peer"`
-	LastSeen int64            `json:"lastseen"`
+type stunPack struct {
+	MessageType          uint16
+	MessageLength        uint16
+	MessageCookie        uint32
+	MessageTransactionID [12]uint8
 }
 
-func NewNode(path, endpoint string) {
-	node := Node{
-		Id:       path,
-		Endpoint: endpoint,
-	}
-	json_data, err := json.Marshal(node)
-	if err != nil {
-		log.Printf("error : %v", err)
-	}
-	resp, err := http.Post(SERVER_ADDR, "application/json",
-		bytes.NewBuffer(json_data))
-	if err != nil {
-		log.Fatal(err)
-	}
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
-	bodyString := string(bodyBytes)
-	fmt.Println(bodyString)
+func (p *stunPack) Bytes() []byte {
+	return BE(
+		p.MessageType,
+		p.MessageLength,
+		p.MessageCookie,
+		p.MessageTransactionID,
+	)
 }
 
-func JoinNode(path, endpoint string) {
-	node := &Node{
-		Id:       path,
-		Endpoint: endpoint,
-	}
-	json_data, err := json.Marshal(node)
-	if err != nil {
-		log.Printf("error : %v", err)
-	}
-	resp, err := http.Post(SERVER_ADDR+path, "application/json",
-		bytes.NewBuffer(json_data))
-	if err != nil {
-		log.Fatal(err)
-	}
-	json.NewDecoder(resp.Body).Decode(node)
-	// fmt.Println(node)
-	resp.Body.Close()
-}
-
-func GetNode(path string) *Node {
-	node := &Node{}
-	resp, err := http.Get(SERVER_ADDR + path)
-	if err != nil {
-		log.Printf("error : %v", err)
-	}
-	json.NewDecoder(resp.Body).Decode(node)
-	// fmt.Println(node)
-	resp.Body.Close()
-	return node
-}
-
-func PingPeer(path string, conn net.PacketConn) {
-	node := GetNode(path)
-	for paddr := range node.Peer {
-		addr, err := net.ResolveUDPAddr("udp", paddr)
-		if err != nil {
-			log.Printf("error : %v", err)
-			continue
+// cop111223
+func GetAddr(conn net.PacketConn) (string, error) {
+	flag := true
+	go func() {
+		time.Sleep(time.Second * 5)
+		if flag {
+			conn.Close()
 		}
-		conn.WriteTo([]byte{}, addr)
-	}
-}
-func PingHost(path string, conn net.PacketConn) {
-	node := GetNode(path)
-	addr, err := net.ResolveUDPAddr("udp", node.Endpoint)
+	}()
+	addr1, err := GetAddress(conn, "stun1.l.google.com:19302")
 	if err != nil {
 		log.Printf("error : %v", err)
-		return
+		return "", err
 	}
-	conn.WriteTo([]byte{}, addr)
+	addr2, err := GetAddress(conn, "stun2.l.google.com:19302")
+	if err != nil {
+		log.Printf("error : %v", err)
+		return "", err
+	}
+	if addr1 == addr2 {
+		flag = false
+		return addr1, nil
+	}
+	return "", errors.New("严格的nat类型")
 }
 
-func (node *Node) PingPeer(conn net.PacketConn) {
-	// node := GetNode(path)
-	for paddr := range node.Peer {
-		addr, err := net.ResolveUDPAddr("udp", paddr)
-		if err != nil {
-			log.Printf("error : %v", err)
-			continue
-		}
-		conn.WriteTo([]byte{}, addr)
-	}
-}
-func (node *Node) PingHost(conn net.PacketConn) {
-	// node := GetNode(path)
-	addr, err := net.ResolveUDPAddr("udp", node.Endpoint)
+// copy 111223
+func GetAddress(conn net.PacketConn, server string) (string, error) {
+	addr, err := net.ResolveUDPAddr("udp", server)
 	if err != nil {
 		log.Printf("error : %v", err)
-		return
+		return "", err
 	}
-	conn.WriteTo([]byte{}, addr)
+	sp := stunPack{
+		1,
+		0,
+		0x2112A442,
+		[12]uint8{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+	}
+	conn.WriteTo(sp.Bytes(), addr)
+	buffer := make([]byte, 2048)
+	n, _, err := conn.ReadFrom(buffer)
+	if err != nil {
+		log.Println(err.Error())
+		return "", err
+	}
+
+	return xorAddr(buffer[n-6 : n]), nil
+}
+
+// copy 111223
+func xorAddr(b []byte) string {
+	if len(b) != 6 {
+		return ""
+	}
+	port := binary.BigEndian.Uint16(b[0:2])
+	port ^= 0x2112
+	ip := net.IPv4(b[2]^0x21, b[3]^0x12, b[4]^0xa4, b[5]^0x42)
+	return fmt.Sprintf("%s:%d", ip, port)
+}
+
+// BigEncoder 111223
+func BE(v ...interface{}) []byte {
+	buf := bytes.Buffer{}
+	for _, i := range v {
+		// fmt.Println(i)
+		buf.Write(BEbytes(i))
+	}
+	return buf.Bytes()
+}
+
+// tested 11223
+func BEbytes(v interface{}) []byte {
+	if va, ok := v.(uint16); ok {
+		b := make([]byte, 2)
+		binary.BigEndian.PutUint16(b, va)
+		return b
+	}
+	if va, ok := v.(uint32); ok {
+		b := make([]byte, 4)
+		binary.BigEndian.PutUint32(b, va)
+		return b
+	}
+	if va, ok := v.([12]byte); ok {
+		return va[:]
+	}
+	if va, ok := v.([]byte); ok {
+		return va[:]
+	}
+	return nil
 }

@@ -24,6 +24,8 @@ Full Cone, 差不多就是公网IP，没打洞必要。所以就针对 Restricte
 
 哦对了，校园网因为国内外路线的问题，连不了。可能真的还得整ipv6的适配……
 
+[helper server 源代码](https://github.com/Hana-ame/Toys/blob/master/helper-server/server.go)
+
 ## build
 ```
 go build .

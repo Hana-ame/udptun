@@ -5,7 +5,9 @@ a tiny tool for hole-punching
 内网穿透用小玩具。自己写是因为搜索能力欠佳搜不到能用的……
 
 总之nat类型按照从宽松到严格三种。
+
 > Full Cone, Restricted Cone, Symmetric
+
 最后一种因为 local addr 和 destination addr 对不上所以打不了洞的，请直接放弃。
 
 Full Cone, 差不多就是公网IP，没打洞必要。所以就针对 Restricted Cone (有 Port Restricted Cone 类型但是意义不大，过程都一样的)

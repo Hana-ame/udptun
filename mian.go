@@ -24,7 +24,7 @@ var addr string
 var host string
 var path string
 
-func main() {
+func mian() {
 
 	addr = "localhost:9999"
 	host = "http://127.0.233.0:8080"

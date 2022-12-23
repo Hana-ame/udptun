@@ -3,6 +3,7 @@ package main
 import (
 	// "fmt"
 	"fmt"
+	"internal/itoa"
 	"log"
 	"net"
 	"time"
@@ -15,9 +16,10 @@ type portal struct {
 	stunServer string
 	localAddr  string
 
-	router utils.LockedMap
+	router utils.LockedMap // map[addr.String()]func([]byte)
 
-	connMap utils.LockedMap
+	serverDst *net.UDPAddr
+	connMap   utils.LockedMap
 }
 
 func (p *portal) getLocalAddr(isIPv4 bool) string {
@@ -89,28 +91,4 @@ func main() {
 
 	go renewAddr(p, true)
 
-}
-
-type timedUDPConn struct {
-	*net.UDPConn
-	lastPack int64
-}
-
-func newTimedUDPConn(listen) *timedUDPConn {
-}
-
-type udpMux struct {
-	*net.UDPConn
-	utils.LockedMap
-}
-
-func (c *udpMux) run(listen string) {
-	addr, err := net.ResolveUDPAddr("udp", listen)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	c.UDPConn, err = net.ListenUDP("udp", addr)
-	if err != nil {
-		log.Fatalln(err)
-	}
 }

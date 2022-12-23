@@ -21,13 +21,13 @@ func (m *LockedMap) Get(key string) (interface{}, bool) {
 	return v, ok
 }
 
-func (m *LockedMap) Set(key string, value interface{}) {
+func (m *LockedMap) Put(key string, value interface{}) {
 	m.Lock()
 	defer m.Unlock()
 	m.m[key] = value
 }
 
-func (m *LockedMap) Delete(key string) {
+func (m *LockedMap) Remove(key string) {
 	m.Lock()
 	defer m.Unlock()
 	delete(m.m, key)

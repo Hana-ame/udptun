@@ -3,7 +3,6 @@ package main
 import (
 	// "fmt"
 	"fmt"
-	"internal/itoa"
 	"log"
 	"net"
 	"time"
@@ -82,13 +81,17 @@ func renewAddr(p *portal, isIPv4 bool) {
 }
 
 func main() {
-	// initial the portal
-	lc, _ := net.ListenUDP("udp", nil)
-	p = &portal{
-		UDPConn: lc,
-	}
-	go p.run()
 
-	go renewAddr(p, true)
+	addr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:1900")
+	lc, _ := net.ListenUDP("udp", addr)
+	NewU
+
+	// initial the portal
+	// lc, _ := net.ListenUDP("udp", nil)
+	// p = &portal{
+	// 	UDPConn: lc,
+	// }
+	// go p.run()
+	// go renewAddr(p, true)
 
 }

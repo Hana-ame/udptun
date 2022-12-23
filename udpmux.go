@@ -15,9 +15,11 @@ type UDPMux struct {
 	connMap *utils.LockedMap
 
 	portal *portal
+
+	closed bool
 }
 
-func newUDPMux(listen string, dst string, portal *portal) *UDPMux {
+func NewUDPMux(listen string, dst string, portal *portal) *UDPMux {
 	addr, err := net.ResolveUDPAddr("udp", listen)
 	if err != nil {
 		panic(err)
@@ -36,9 +38,8 @@ func newUDPMux(listen string, dst string, portal *portal) *UDPMux {
 		dstAddr: dstAddr,
 		connMap: utils.NewLockedMap(),
 		portal:  portal,
+		closed:  false,
 	}
-
-	portal.router.Put(dst, c.ReadFromPortal)
 
 	return c
 }
@@ -46,6 +47,7 @@ func newUDPMux(listen string, dst string, portal *portal) *UDPMux {
 func (c *UDPMux) ReadFromPortal(data []byte) {
 	if v, ok := c.connMap.Get(string(data[0:2])); ok {
 		if fc, ok := v.(*fakeUDPConn); ok {
+			// TODO if want to ake portal package edit here
 			fc.WriteToSrc(data)
 		} else {
 			log.Println("value not *fakeUDPConn")
@@ -57,9 +59,10 @@ func (c *UDPMux) ReadFromPortal(data []byte) {
 
 // will only recv from local
 func (c *UDPMux) Run() {
-	for {
-		buf := make([]byte, 1500)
-		n, addr, err := c.ReadFromUDP(buf)
+	c.portal.router.Put(c.dstAddr.String(), c.ReadFromPortal)
+	buf := make([]byte, 1500)
+	for !c.closed {
+		n, addr, err := c.ReadFromUDP(buf[2:]) // TODO if want to make protal packege edit here
 		if err != nil {
 			log.Println(err)
 			continue
@@ -68,7 +71,7 @@ func (c *UDPMux) Run() {
 		tag := string([]byte{byte(addr.Port / 256), byte(addr.Port % 256)}) // Big
 		if v, ok := c.connMap.Get(tag); ok {
 			if fc, ok := v.(*fakeUDPConn); ok {
-				fc.WriteToDst(buf[:n])
+				fc.WriteToDst(buf[:n+2]) // TODO
 			} else {
 				log.Println("fakeConn is", fc, " not fakeUDPConn")
 				continue
@@ -77,16 +80,18 @@ func (c *UDPMux) Run() {
 			// create new fakeConn
 			if fc := NewFakeUDPConn(addr, c.UDPConn, c.dstAddr, c.portal.UDPConn); fc != nil {
 				c.connMap.Put(tag, fc)
-				fc.WriteToDst(buf[:n])
+				fc.WriteToDst(buf[:n+2]) // TODO
 			} else {
 				log.Println("fakeConn is nil")
 				continue
 			}
 		}
 	}
+	c.Close()
 }
 
 func (c *UDPMux) Close() {
+	c.closed = true
 	c.portal.router.Remove(c.dstAddr.String())
 	c.UDPConn.Close()
 }

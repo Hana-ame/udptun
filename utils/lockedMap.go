@@ -32,3 +32,11 @@ func (m *LockedMap) Delete(key string) {
 	defer m.Unlock()
 	delete(m.m, key)
 }
+
+func (m *LockedMap) Iter(handler func(key string, value interface{})) {
+	m.Lock()
+	defer m.Unlock()
+	for key, value := range m.m {
+		handler(key, value)
+	}
+}

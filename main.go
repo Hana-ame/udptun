@@ -20,15 +20,13 @@ type portal struct {
 	connMap utils.LockedMap
 }
 
-func (p *portal) getLocalAddr(IPv4 bool) string {
-	if IPv4 {
-		fmt.Println(p.localAddr, p.stunServer)
+func (p *portal) getLocalAddr(isIPv4 bool) string {
+	if isIPv4 {
 		if p.localAddr == "" && p.stunServer != "" {
 			go func() {
 				for {
-					// fmt.Println("send")
 					utils.StunRequest(p.stunServer, p.UDPConn)
-					time.Sleep(1 * time.Second)
+					time.Sleep(5 * time.Second)
 				}
 			}()
 		}
@@ -49,33 +47,70 @@ func (p *portal) run() {
 			log.Println(err)
 			continue
 		}
-		log.Println(addr.String())
-		s, err := utils.StunResolve(buf[:n])
-		log.Println(s)
+
+		if addr.String() == p.stunServer {
+			p.localAddr, err = utils.StunResolve(buf[:n])
+			if err != nil {
+				log.Println("error when recv from stunServer", err)
+				continue
+			}
+		} else if value, ok := p.router.Get(addr.String()); ok {
+			if handler, ok := value.(func([]byte)); ok {
+				handler(buf[:n])
+			} else {
+				log.Println("invalid router")
+				continue
+			}
+		} else {
+			log.Println("not supposed to be seen@protal run for loop")
+		}
+	}
+}
+
+var p *portal
+
+func renewAddr(p *portal, isIPv4 bool) {
+	for {
+		r := p.getLocalAddr(isIPv4)
+		if r != "" {
+			//TODO: Renew
+		}
+		time.Sleep(5 * time.Second)
 	}
 }
 
 func main() {
-	lc, _ := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("0.0.0.0"), Port: 2345})
-
-	p := &portal{
+	// initial the portal
+	lc, _ := net.ListenUDP("udp", nil)
+	p = &portal{
 		UDPConn: lc,
 	}
 	go p.run()
-	r := p.getLocalAddr(true)
-	fmt.Println(r)
-	fmt.Println(p.UDPConn.LocalAddr().String())
 
-	time.Sleep(time.Second * 9)
-	r = p.getLocalAddr(true)
-	fmt.Println(r)
+	go renewAddr(p, true)
+
 }
 
-func runServer(src string, dst string) {
-	lc, err := net.Listen("udp", src)
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
-	_ = lc
+type timedUDPConn struct {
+	*net.UDPConn
+	lastPack int64
+}
 
+func newTimedUDPConn(listen) *timedUDPConn {
+}
+
+type udpMux struct {
+	*net.UDPConn
+	utils.LockedMap
+}
+
+func (c *udpMux) run(listen string) {
+	addr, err := net.ResolveUDPAddr("udp", listen)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	c.UDPConn, err = net.ListenUDP("udp", addr)
+	if err != nil {
+		log.Fatalln(err)
+	}
 }

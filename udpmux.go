@@ -1,7 +1,6 @@
 package main
 
 import (
-	"internal/itoa"
 	"log"
 	"net"
 	"time"
@@ -39,13 +38,21 @@ func newUDPMux(listen string, dst string, portal *portal) *UDPMux {
 		portal:  portal,
 	}
 
-	portal.router.Put(dst, c.Handle)
+	portal.router.Put(dst, c.ReadFromPortal)
 
 	return c
 }
 
-func (c *UDPMux) Handle(data []byte) {
-	// TODO
+func (c *UDPMux) ReadFromPortal(data []byte) {
+	if v, ok := c.connMap.Get(string(data[0:2])); ok {
+		if fc, ok := v.(*fakeUDPConn); ok {
+			fc.WriteToSrc(data)
+		} else {
+			log.Println("value not *fakeUDPConn")
+		}
+	} else {
+		log.Println("connMap do not have key:", data[0:2])
+	}
 }
 
 // will only recv from local
@@ -57,7 +64,8 @@ func (c *UDPMux) Run() {
 			log.Println(err)
 			continue
 		}
-		tag := itoa.Itoa(addr.Port)
+		// tag := itoa.Itoa(addr.Port)
+		tag := string([]byte{byte(addr.Port / 256), byte(addr.Port % 256)}) // Big
 		if v, ok := c.connMap.Get(tag); ok {
 			if fc, ok := v.(*fakeUDPConn); ok {
 				fc.WriteToDst(buf[:n])
@@ -78,8 +86,8 @@ func (c *UDPMux) Run() {
 	}
 }
 
-func (c *UDPMux) close() {
-	c.portal.router.Remove(c.dstAddr)
+func (c *UDPMux) Close() {
+	c.portal.router.Remove(c.dstAddr.String())
 	c.UDPConn.Close()
 }
 
@@ -103,6 +111,7 @@ func NewFakeUDPConn(srcAddr *net.UDPAddr, srcConn *net.UDPConn, dstAddr *net.UDP
 	}
 }
 
+// do here
 func (c *fakeUDPConn) WriteToDst(b []byte) (int, error) {
 	c.lastactivity = time.Now().Unix()
 	return c.dstConn.WriteToUDP(b, c.dstAddr)

@@ -1,30 +1,5 @@
-                  udpMux
-
-                 +---------------------------------------------------------+
-                 |                                                         |
-                 |                                                         |
-         Client  |     +-----------+                                       |
-         Connection    |net.UDPConn|                                       |
-           ------+---->|listening  |                                       |
-                 |     +--+--------+                                       |
-                 |        |   v Data                                       |
-                 |        | +----------------+      +-----------------+    |
-                 |        | | FakeUDPConn    |      | Portal.Conn     |    |  Send to destination Portal
-                 |        | |                +----->|                 +----+----->
-                 |        | +----------------+      +-----------------+    |
-                 |   Tag  |  ^                                             |
-                 |        |  | GetOrDefault                                |
-                 |        v  |                                             |
-                 |    +------+--------                                     |  UDPMux.ReadFromPortal
-                 |    | connMap        |                                   |
-                 |    | get FakeUDPConn|                     <-------------+---------
-                 |    |                |                                   |
-                 |    +----------------+                                   |
-                 |                                                         |
-                 +---------------------------------------------------------+
-
-
-
+UDPMux
+```txt
                                        data            c.WriteToDst
 Client connection        +-------------+  +-------------+  +-------------+    Send to dst Portal
           ---------------> net.UDPConn +--> FakeUDPConn +--> Portal.Conn +--------->
@@ -38,3 +13,4 @@ Client connection        +-------------+  +-------------+  +-------------+    Se
                                           +-----------v-+    |                UDPMux.ReadFromPortal
           <-------------------------------+ FakeUDPConn <----+---------------------
                                           +-------------+
+```

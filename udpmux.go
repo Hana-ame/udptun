@@ -49,6 +49,8 @@ func NewUDPMux(listen string, dst string, portal *Portal) *UDPMux {
 		closed:  false,
 	}
 
+	go c.Run()
+
 	return c
 }
 
@@ -93,7 +95,12 @@ func (c *UDPMux) Run() {
 			}
 		} else {
 			// create new fakeConn
-			if fc := NewFakeUDPConn(addr, c.UDPConn, c.dstAddr, c.portal.UDPConn); fc != nil {
+			if fc := NewFakeUDPConn(
+				addr, c.UDPConn,
+				c.dstAddr, c.portal.UDPConn,
+				tag, 5, func() {
+					c.connMap.Remove(tag)
+				}); fc != nil {
 				c.connMap.Put(tag, fc)
 				fc.WriteToDst(buf.DataAndTag(n))
 			} else {

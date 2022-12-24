@@ -1,35 +1,40 @@
 package main
 
-import "fmt"
-
-// TODO
-// add a proxy from addr to remote
-func proxy(addr string, p *Portal) *UDPMux {
-	// listen udp local
-
-	// create UDPMux
-
-	// return
-	return nil
-}
+import (
+	"fmt"
+	"time"
+)
 
 func main() {
-	b := make(PortalBuf, 10)
-	b[0] = 1
-	b[1] = 2
-	b[2] = 3
-	b[3] = 4
-	fmt.Println(b)
-	fmt.Println(b.Tag())
-	copy(b.Tag(), b.Data(0))
-	fmt.Println(b.Raw(4).Data(0))
-	fmt.Println(b.Tag())
-	b[3] = 5
-	b[0] = 0
-	fmt.Println(b.Raw(4).Data(0))
-	fmt.Println(b.Tag())
-	fmt.Println(b.AddTag(string("ab")))
-	fmt.Println(b.Raw(4).Data(0))
-	fmt.Println(b.Tag())
+	p := NewPortal("")
+	go func() {
+		for {
+			time.Sleep(5 * time.Second)
+			fmt.Println(p)
+		}
+	}()
+	laddr := "0.0.0.0:3456"
+	c := NewUDPMux(laddr, "127.0.0.1:9999", p)
+	// go func() {
+	// 	for {
+	// 		time.Sleep(5 * time.Second)
+	// 		fmt.Println(c)
+	// 		fmt.Println(c.connMap.Size())
+	// 		c.connMap.Iter(
+	// 			func(key string, value any) {
+	// 				fmt.Println([]byte(key))
+	// 			},
+	// 		)
+	// 	}
+	// }()
+	time.Sleep(time.Minute)
+
+	c.closed = true
+
+	time.Sleep(time.Minute)
 
 }
+
+// func main() {
+// 	utils.UDPEcho(":9999")
+// }

@@ -40,3 +40,9 @@ func (m *LockedMap) Iter(handler func(key string, value interface{})) {
 		handler(key, value)
 	}
 }
+
+func (m *LockedMap) Size() int {
+	m.Lock()
+	defer m.Unlock()
+	return len(m.m)
+}

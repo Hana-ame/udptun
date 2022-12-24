@@ -13,18 +13,30 @@ type fakeUDPConn struct {
 	dstConn *net.UDPConn
 
 	lastactivity int64
+	timeout      int64
 	closed       bool
+	close        func()
 }
 
-func NewFakeUDPConn(srcAddr *net.UDPAddr, srcConn *net.UDPConn, dstAddr *net.UDPAddr, dstConn *net.UDPConn) *fakeUDPConn {
-	return &fakeUDPConn{
+func NewFakeUDPConn(
+	srcAddr *net.UDPAddr, srcConn *net.UDPConn,
+	dstAddr *net.UDPAddr, dstConn *net.UDPConn,
+	tag string, timeout int64, close func(),
+) *fakeUDPConn {
+	fc := &fakeUDPConn{
 		srcAddr:      srcAddr,
 		srcConn:      srcConn,
 		dstAddr:      dstAddr,
 		dstConn:      dstConn,
 		lastactivity: time.Now().Unix(),
+		timeout:      timeout,
 		closed:       false,
+		close:        close,
 	}
+
+	go fc.Run()
+
+	return fc
 }
 
 // raw
@@ -41,6 +53,19 @@ func (c *fakeUDPConn) WriteToSrc(b []byte) (int, error) {
 	return c.srcConn.WriteToUDP(b, c.srcAddr)
 }
 
-func (c *fakeUDPConn) Close() {
-	c.closed = true
+// unused
+func (c *fakeUDPConn) Run() {
+	for {
+		time.Sleep(time.Second)
+		if time.Now().Unix()-c.lastactivity > c.timeout {
+			c.closed = true
+			c.close()
+			return
+		}
+	}
 }
+
+// unused
+// func (c *fakeUDPConn) Close() {
+// 	c.closed = true
+// }

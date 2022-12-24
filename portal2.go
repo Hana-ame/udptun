@@ -19,14 +19,41 @@ type Portal struct {
 	// map [addr.String()] func(PortalBuf)
 	// where addr is remote portal's address
 	// func(PortalBuf) is provided by udpmux.
-	router utils.LockedMap
+	router *utils.LockedMap
 
 	// portal -> dst
 	// if dst is not nil, it will be used to send udp packets to dst
 	dst *net.UDPAddr
 	// map [addr.String() + tag] *fakeUDPConn
 	// send data for Conn here
-	connMap utils.LockedMap
+	connMap *utils.LockedMap
+}
+
+// "" means not accept remote
+func NewPortal(dst string) *Portal {
+
+	c, err := net.ListenUDP("udp", nil)
+	if err != nil {
+		log.Fatal(err)
+		return nil
+	}
+	var dstAddr *net.UDPAddr = nil
+	if dst != "" {
+		dstAddr, err = net.ResolveUDPAddr("udp", dst)
+		if err != nil {
+			log.Fatal(err)
+			return nil
+		}
+	}
+	p := &Portal{
+		UDPConn:   c,
+		localAddr: "",
+		router:    utils.NewLockedMap(),
+		dst:       dstAddr,
+		connMap:   utils.NewLockedMap(),
+	}
+	go p.Run()
+	return p
 }
 
 // stun.
@@ -49,6 +76,7 @@ func (p *Portal) GetLocalAddr(stunServer string) string {
 	return p.localAddr
 }
 
+// go
 func (p *Portal) Run() {
 	// portal -X-> stun
 	stunServer := "142.251.2.127:19302" // google
@@ -100,7 +128,12 @@ func (p *Portal) Run() {
 				if err != nil {
 					log.Println("DailUDP failed") // never
 				}
-				fc := NewFakeUDPConn(p.dst, c, addr, p.UDPConn)
+				fc := NewFakeUDPConn(
+					p.dst, c,
+					addr, p.UDPConn,
+					addrString+tag, 5, func() {
+						p.connMap.Remove(addrString + tag)
+					})
 				// dst -X-> portal --> portal --> src
 				go handleUDPConn(fc, p, tag)
 				p.connMap.Put(addrString+tag, fc)

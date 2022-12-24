@@ -63,7 +63,7 @@ func NewPortal(dst string) *Portal {
 
 // stun.
 // empty stunServer for IPv6
-// for Ipv4, first stunServer is "stun.l.google.com:19302".
+// for IPv4, first stunServer is "stun.l.google.com:19302".
 // and set stunServer to "udp4" for latest result
 // for IPv6, set the stunServer to "udp" or "udp6"
 func (p *Portal) GetLocalAddr(stunServer string) string {
@@ -71,12 +71,12 @@ func (p *Portal) GetLocalAddr(stunServer string) string {
 		go func() {
 			for {
 				utils.StunRequest(stunServer, p.UDPConn)
-				time.Sleep(5 * time.Second)
+				time.Sleep(30 * time.Second)
 			}
 		}()
 		time.Sleep(5 * time.Second)
 	} else if stunServer != "udp4" {
-		p.localAddr = utils.GetOutboundIPv6(p.UDPConn)
+		return utils.GetOutboundIPv6(p.UDPConn)
 	}
 	return p.localAddr
 }

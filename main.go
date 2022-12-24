@@ -1,14 +1,51 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"time"
 
-	"github.com/hana-ame/udptun/utils"
+	"github.com/hana-ame/udptun/helper"
 )
 
+var p *Portal
+
+var dst string
+var address string
+
 func main() {
-	utils.StunTest()
+	go helper.Server("127.0.0.1:8888")
+	var m map[string]string
+	var a []string
+	m = helper.Post("http://127.0.0.1:8888", "name", "value")
+	m = helper.Post("http://127.0.0.1:8888", "name1", "value")
+	m = helper.Post("http://127.0.0.1:8888", "name1", "value2")
+	m = helper.Post("http://127.0.0.1:8888", "name1", "value3")
+	helper.Delete("http://127.0.0.1:8888", "name")
+	m = helper.Post("http://127.0.0.1:8888", "name1", "value3")
+	a = helper.Get("http://127.0.0.1:8888", "name1")
+	fmt.Println(m, a)
+	helper.Append("http://127.0.0.1:8888", "name1", "value4")
+	helper.Append("http://127.0.0.1:8888", "name", "value4")
+	a = helper.Get("http://127.0.0.1:8888", "name1")
+	fmt.Println(m, a)
+	a = helper.Get("http://127.0.0.1:8888", "name")
+	fmt.Println(m, a)
+
+	helper.Delete("http://127.0.0.1:8888", "name1")
+	m = helper.Post("http://127.0.0.1:8888", "name1", "value")
+	a = helper.Get("http://127.0.0.1:8888", "name1")
+	fmt.Println(m, a)
+}
+
+func main1() {
+	flag.StringVar(&dst, "d", "", "destination host")
+	flag.StringVar(&address, "httpHost", "", "http listen address")
+
+	p = NewPortal(dst)
+
+	flag.Parse()
+
 }
 
 func server9999() {

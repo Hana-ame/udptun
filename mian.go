@@ -13,11 +13,11 @@ import (
 var c *net.UDPConn
 var peerAddr *net.UDPAddr
 
-// var getPool *PortalPool
-// var putPool *PortalPool
-var pc *PortalClient
+// var getPool *portalPool
+// var putPool *portalPool
+var pc *portalClient
 
-var m map[string]*Portal
+var m map[string]*portal
 var mu sync.Mutex
 
 var addr string
@@ -52,9 +52,9 @@ func mian() {
 	// time.Sleep(time.Hour)
 }
 
-func ActiveClientPortal() {
+func ActiveClientportal() {
 	if pc.Pool.Cnt() < pc.Pool.mlen {
-		go pc.NewPortal()
+		go pc.Newportal()
 	}
 	if peerAddr == nil {
 		return
@@ -64,37 +64,37 @@ func ActiveClientPortal() {
 		return
 	}
 
-	// fmt.Println("ActiveClientPortal", p, pc.Pool, pc.Mux.Pool, peerAddr, c)
-	// fmt.Println("****** ActiveClientPortal *******", "\n", peerAddr, "\n", p.LocalAddr, "\n", "******")
+	// fmt.Println("ActiveClientportal", p, pc.Pool, pc.Mux.Pool, peerAddr, c)
+	// fmt.Println("****** ActiveClientportal *******", "\n", peerAddr, "\n", p.LocalAddr, "\n", "******")
 	// fmt.Println(m)
 	c.WriteToUDP([]byte(p.LocalAddr), peerAddr)
 	mu.Lock()
 	m[p.LocalAddr] = p
 	mu.Unlock()
 
-	// fmt.Println("****** ActiveClientPortal *******", "\n", p, "\n", pc.Pool, "\n", pc.Mux.Pool, "\n", "******")
+	// fmt.Println("****** ActiveClientportal *******", "\n", p, "\n", pc.Pool, "\n", pc.Mux.Pool, "\n", "******")
 
 	// for i := putPool.mlen - putPool.Cnt(); i > 0; i-- {
-	// 	ActiveClientPortal()
+	// 	ActiveClientportal()
 	// }
 	// time.Sleep(time.Second)
 	if pc.Mux.Pool.mlen-1 > pc.Mux.Pool.Cnt() {
-		go ActiveClientPortal()
+		go ActiveClientportal()
 	}
 }
 
 func Client(listenAddr string) {
 	stopFlag := false
-	pc = NewPortalClient(listenAddr)
+	pc = NewportalClient(listenAddr)
 	for i := 0; i < 5; i++ {
-		go pc.NewPortal()
+		go pc.Newportal()
 	}
-	pc.NewPortal()
+	pc.Newportal()
 
 	go debug(pc)
 	// getPool = pc.Pool
 	// putPool = pc.Mux.Pool
-	pc.Mux.RecvConnCallBack = ActiveClientPortal
+	pc.Mux.RecvConnCallBack = ActiveClientportal
 
 	var err error
 	c, err = net.ListenUDP("udp", nil)
@@ -133,7 +133,7 @@ func Client(listenAddr string) {
 		}
 	}(host, path, localAddr)
 
-	m = make(map[string]*Portal)
+	m = make(map[string]*portal)
 	for peerAddr == nil {
 		time.Sleep(time.Second)
 	}
@@ -143,9 +143,9 @@ func Client(listenAddr string) {
 	l, raddr, err := c.ReadFromUDP(buf)
 	log.Println("recv first pack", raddr, "len = ", l)
 
-	ActiveClientPortal()
-	ActiveClientPortal()
-	ActiveClientPortal()
+	ActiveClientportal()
+	ActiveClientportal()
+	ActiveClientportal()
 
 	fmt.Println("===============")
 	fmt.Println(pc.Mux.Pool)
@@ -153,8 +153,8 @@ func Client(listenAddr string) {
 	fmt.Println(pc.Mux.m)
 	fmt.Println("===============")
 
-	ActiveClientPortal()
-	ActiveClientPortal()
+	ActiveClientportal()
+	ActiveClientportal()
 
 	for {
 		// fmt.Println("recv")
@@ -196,9 +196,9 @@ func Client(listenAddr string) {
 
 func Server(forwardAddr string) {
 	stopFlag := false
-	ps := NewPortalServer(forwardAddr)
+	ps := NewportalServer(forwardAddr)
 	for i := 0; i < 5; i++ {
-		go ps.NewPortal()
+		go ps.Newportal()
 	}
 
 	var err error
@@ -258,7 +258,7 @@ func Server(forwardAddr string) {
 			log.Println(err)
 			continue
 		}
-		p := ps.ActivePortal(&msg, ps.LocalAddr, nil)
+		p := ps.Activeportal(&msg, ps.LocalAddr, nil)
 		if p == nil {
 			log.Println(msg, "no portal avaliable")
 			continue
@@ -277,7 +277,7 @@ func Server(forwardAddr string) {
 	}
 }
 
-func debug(pc *PortalClient) {
+func debug(pc *portalClient) {
 	for {
 		time.Sleep(time.Second * 10)
 		fmt.Println("===============")

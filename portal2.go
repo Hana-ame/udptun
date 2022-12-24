@@ -61,6 +61,17 @@ func NewPortal(dst string) *Portal {
 	return p
 }
 
+func (p *Portal) Ping(arr []string) {
+	for _, v := range arr {
+		addr, err := net.ResolveUDPAddr("udp", v)
+		if err != nil {
+			log.Println(v, " can not resolve ", err)
+			continue
+		}
+		p.UDPConn.WriteToUDP([]byte{}, addr)
+	}
+}
+
 // stun.
 // empty stunServer for IPv6
 // for IPv4, first stunServer is "stun.l.google.com:19302".

@@ -147,9 +147,12 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 		if len(args) != 2 {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
+
 		w.Header().Set("Content-Type", "application/json")
 		mu.Lock()
-		root[args[0]] = args[1]
+		if !(args[0] == "" || args[1] == "") {
+			root[args[0]] = args[1]
+		}
 		json.NewEncoder(w).Encode(root)
 		mu.Unlock()
 	} else if r.Method == "DELETE" {

@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -76,7 +75,7 @@ func main() {
 		r.HandleFunc("/", handleRoot)
 		r.HandleFunc("/{peer}", handlePeer)
 		err := http.ListenAndServe(address, r)
-		fmt.Fatal(err)
+		log.Fatal(err)
 	}
 }
 

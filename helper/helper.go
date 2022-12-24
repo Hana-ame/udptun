@@ -18,13 +18,14 @@ var mu sync.RWMutex
 var client *http.Client
 
 func Append(host string, name, laddr string) {
-	_, err := http.Post(host+"/"+name, "application/json", strings.NewReader(laddr))
+	_, err := http.Post(host+name, "application/json", strings.NewReader(laddr))
 	if err != nil {
 		log.Println(err)
 	}
 }
+
 func Get(host string, name string) []string {
-	r, err := http.Get(host + "/" + name)
+	r, err := http.Get(host + name)
 	if err != nil {
 		log.Println(err)
 		return nil
@@ -56,6 +57,7 @@ func Post(host string, name, laddr string) map[string]string {
 	}
 	return m
 }
+
 func Delete(host string, name string) {
 	if client == nil {
 		client = &http.Client{

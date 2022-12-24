@@ -20,7 +20,7 @@ func main() {
 	fmt.Println(b)
 	fmt.Println(b.Tag())
 	copy(b.Tag(), b.Data(0))
-	fmt.Println(b)
+	fmt.Println(b.Raw(4).Data(0))
 	fmt.Println(b.Tag())
 
 }

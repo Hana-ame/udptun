@@ -32,9 +32,9 @@ type Portal struct {
 
 // "" means not accept remote
 func NewPortal(dst string) *Portal {
-	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:4444") // !!!!debug
-	c, err := net.ListenUDP("udp", addr)                   // !!!!debug
-	// c, err := net.ListenUDP("udp", nil)
+	// addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:4444") // !!!!debug
+	// c, err := net.ListenUDP("udp", addr)                   // !!!!debug
+	c, err := net.ListenUDP("udp", nil)
 	if err != nil {
 		log.Fatal("what?", err)
 		return nil

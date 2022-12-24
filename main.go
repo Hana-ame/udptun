@@ -3,9 +3,15 @@ package main
 import (
 	"fmt"
 	"time"
+
+	"github.com/hana-ame/udptun/utils"
 )
 
 func main() {
+	utils.StunTest()
+}
+
+func server9999() {
 	p := NewPortal("127.0.0.1:9999")
 	go func() {
 		for {

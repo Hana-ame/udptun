@@ -2,6 +2,11 @@
 https://asciiflow.com/
 ## TODO
 
+```ps1
+./udptun.exe -d "localhost:9999" -n server -h "http://localhost:8888/"
+./udptun.exe -a "localhost:8080" -n client -h "http://localhost:8888/"
+
+```
 UDPMux
 
 - ~~add tag to packet between portals. ~~

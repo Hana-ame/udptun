@@ -89,9 +89,11 @@ func StunResolve(data []byte) (string, error) {
 }
 
 func GetOutboundIPv6(lc *net.UDPConn) string {
+	// log.Println("GetOutboundIPv6", lc)
 	conn, err := net.Dial("udp", "[2606:4700:4700::1111]:53")
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return ""
 	}
 	defer conn.Close()
 

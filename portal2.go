@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/hana-ame/udptun/utils"
@@ -35,9 +36,10 @@ func NewPortal(dst string) *Portal {
 	// addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:4444") // !!!!debug
 	// c, err := net.ListenUDP("udp", addr)                   // !!!!debug
 	c, err := net.ListenUDP("udp", nil)
-	if err != nil {
-		log.Fatal("what?", err)
-		return nil
+	for err != nil {
+		log.Println("what?", err)
+		time.Sleep(2 * time.Second)
+		c, err = net.ListenUDP("udp", nil)
 	}
 
 	var dstAddr *net.UDPAddr = nil
@@ -78,7 +80,7 @@ func (p *Portal) Ping(arr []string) {
 // and set stunServer to "udp4" for latest result
 // for IPv6, set the stunServer to "udp" or "udp6"
 func (p *Portal) GetLocalAddr(stunServer string) string {
-	if p.localAddr == "" && stunServer != "" {
+	if p.localAddr == "" && !strings.HasPrefix(stunServer, "udp") {
 		go func() {
 			for {
 				utils.StunRequest(stunServer, p.UDPConn)
@@ -87,7 +89,10 @@ func (p *Portal) GetLocalAddr(stunServer string) string {
 		}()
 		time.Sleep(5 * time.Second)
 	} else if stunServer != "udp4" {
-		return utils.GetOutboundIPv6(p.UDPConn)
+		t := utils.GetOutboundIPv6(p.UDPConn)
+		if t != "" {
+			p.localAddr = t
+		}
 	}
 	return p.localAddr
 }
@@ -104,6 +109,9 @@ func (p *Portal) Run() {
 		buf := make(PortalBuf, 1500)
 		// fmt.Println("reading")
 		n, addr, err := p.ReadFromUDP(buf)
+		if n == 0 {
+			continue
+		}
 		// when reading error
 		if err != nil {
 			log.Println(err)

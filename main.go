@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -30,32 +29,33 @@ func main() {
 	flag.StringVar(&helperAddr, "h", "", "helpserver address")
 	flag.StringVar(&mode, "m", "udp6", "udp4/udp6")
 	flag.Parse()
+	//debug
+
 	lm = utils.NewLockedMap()
 	p = NewPortal(dst)
 	if dst != "" {
 		// as server
-		go func() {
-			// arr := make([]string, 0)
-			cnt := 0
-			var arr []string
-			for {
-				if laddr := p.GetLocalAddr(mode); laddr != "" {
-					helper.Post(helperAddr, name, laddr)
-					// time.Sleep(5 * time.Second)
-				}
-				if a := helper.Get(helperAddr, name); a != nil {
-					arr = append(arr, a...)
-					cnt = 0
-				} else {
-					if cnt += 1; cnt > 90 {
-						cnt = 0
-						arr = nil
-					}
-				}
-				p.Ping(arr)
-				time.Sleep(time.Second)
+		// arr := make([]string, 0)
+		cnt := 0
+		var arr []string
+		for {
+			if laddr := p.GetLocalAddr(mode); laddr != "" {
+				helper.Post(helperAddr, name, laddr)
+				// time.Sleep(5 * time.Second)
 			}
-		}()
+			if a := helper.Get(helperAddr, name); a != nil {
+				fmt.Println(a)
+				arr = append(arr, a...)
+				cnt = 0
+			} else {
+				if cnt += 1; cnt > 90 {
+					cnt = 0
+					arr = nil
+				}
+			}
+			p.Ping(arr)
+			time.Sleep(time.Second)
+		}
 	} // dst != ""
 
 	if address != "" && dst == "" {
@@ -63,8 +63,8 @@ func main() {
 		r := mux.NewRouter()
 		r.HandleFunc("/", handleRoot)
 		r.HandleFunc("/{peer}", handlePeer)
-		http.ListenAndServe(address, r)
-
+		err := http.ListenAndServe(address, r)
+		fmt.Println(err)
 	}
 }
 
@@ -88,9 +88,15 @@ func handlePeer(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				http.Error(w, "can not read body", http.StatusBadRequest)
 			}
-			// remote addr, local addr
-			args := strings.Split(string(body), ",")
-			c := NewUDPMux(args[1], args[0], p)
+			// args := {remote addr, local addr}
+			arg := string(body)
+			helper.Append(helperAddr, peer, p.GetLocalAddr(mode))
+			c := NewUDPMux(arg, m[peer], p)
+
+			fmt.Println(helperAddr, peer, p.GetLocalAddr(mode))
+			fmt.Println(arg, m[peer], p)
+			fmt.Println(c)
+
 			lm.Put(peer, c)
 		} else {
 			http.Error(w, "not found peer", http.StatusNotFound)
@@ -102,7 +108,10 @@ func handlePeer(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if r.Method == "GET" {
 		if c, ok := lm.Get(peer); ok {
-			json.NewEncoder(w).Encode(c.(*UDPMux))
+			fmt.Println(c)
+			json.NewEncoder(w).Encode(c)
+		} else {
+			http.Error(w, "not found peer", http.StatusNotFound)
 		}
 	}
 }

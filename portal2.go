@@ -52,7 +52,9 @@ func NewPortal(dst string) *Portal {
 		dst:       dstAddr,
 		connMap:   utils.NewLockedMap(),
 	}
+
 	go p.Run()
+
 	return p
 }
 
@@ -131,7 +133,8 @@ func (p *Portal) Run() {
 				fc := NewFakeUDPConn(
 					p.dst, c,
 					addr, p.UDPConn,
-					addrString+tag, 5, func() {
+					addrString+tag, 90, func() {
+						c.Close()
 						p.connMap.Remove(addrString + tag)
 					})
 				// dst -X-> portal --> portal --> src

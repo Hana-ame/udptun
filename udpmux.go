@@ -98,7 +98,7 @@ func (c *UDPMux) Run() {
 			if fc := NewFakeUDPConn(
 				addr, c.UDPConn,
 				c.dstAddr, c.portal.UDPConn,
-				tag, 5, func() {
+				tag, 90, func() {
 					c.connMap.Remove(tag)
 				}); fc != nil {
 				c.connMap.Put(tag, fc)

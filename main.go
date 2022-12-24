@@ -1,20 +1,22 @@
 package main
 
 import (
-	"fmt"
 	"time"
 )
 
 func main() {
 	p := NewPortal("")
-	go func() {
-		for {
-			time.Sleep(5 * time.Second)
-			fmt.Println(p)
-		}
-	}()
-	laddr := "0.0.0.0:3456"
-	c := NewUDPMux(laddr, "127.0.0.1:9999", p)
+	// go func() {
+	// 	for {
+	// 		time.Sleep(5 * time.Second)
+	// 		fmt.Println(p.connMap.Size(), p.router.Size())
+	// 		p.router.Iter(func(k string, v any) {
+	// 			fmt.Println((k))
+	// 		})
+	// 	}
+	// }()
+	laddr := "0.0.0.0:3333"
+	c := NewUDPMux(laddr, "127.0.0.1:4444", p)
 	// go func() {
 	// 	for {
 	// 		time.Sleep(5 * time.Second)
@@ -29,7 +31,7 @@ func main() {
 	// }()
 	time.Sleep(time.Minute)
 
-	c.closed = true
+	c.Close()
 
 	time.Sleep(time.Minute)
 

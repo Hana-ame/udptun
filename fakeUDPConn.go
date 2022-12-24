@@ -53,19 +53,17 @@ func (c *fakeUDPConn) WriteToSrc(b []byte) (int, error) {
 	return c.srcConn.WriteToUDP(b, c.srcAddr)
 }
 
-// unused
 func (c *fakeUDPConn) Run() {
 	for {
-		time.Sleep(time.Second)
+		time.Sleep(10 * time.Second)
 		if time.Now().Unix()-c.lastactivity > c.timeout {
-			c.closed = true
-			c.close()
+			c.Close()
 			return
 		}
 	}
 }
 
-// unused
-// func (c *fakeUDPConn) Close() {
-// 	c.closed = true
-// }
+func (c *fakeUDPConn) Close() {
+	c.closed = true
+	c.close()
+}

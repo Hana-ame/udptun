@@ -78,14 +78,14 @@ func Delete(host string, name string) {
 	}
 }
 
-func Server(host string) {
+func Server(host string) error {
 	root = make(map[string]string)
 	peer = make(map[string][]string)
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", handleRoot)
 	r.HandleFunc("/{peer}", handlePeer)
-	http.ListenAndServe(host, r)
+	return http.ListenAndServe(host, r)
 }
 
 func handlePeer(w http.ResponseWriter, r *http.Request) {

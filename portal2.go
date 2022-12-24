@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net"
 	"strings"
@@ -136,7 +135,7 @@ func (p *Portal) Run() {
 		} else if p.dst != nil {
 			// src --> portal -X-> portal -X-> dst
 			tag := string(buf.Tag())
-			fmt.Println(addrString + tag)
+			// fmt.Println(addrString + tag)
 			if value, ok := p.connMap.Get(addrString + tag); ok {
 				if fc, ok := value.(*fakeUDPConn); ok {
 					fc.WriteToSrc(buf.Raw(n).Data(0))

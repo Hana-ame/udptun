@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"time"
 
@@ -22,14 +23,23 @@ var helperAddr string
 var mode string
 var lm *utils.LockedMap
 
+var isHelperServer bool
+
 func main() {
 	flag.StringVar(&dst, "d", "", "destination host")
 	flag.StringVar(&address, "a", "", "http listen address")
 	flag.StringVar(&name, "n", "", "name")
 	flag.StringVar(&helperAddr, "h", "", "helpserver address")
 	flag.StringVar(&mode, "m", "udp6", "udp4/udp6")
+	flag.BoolVar(&isHelperServer, "isHelpServer", false, "work as help server")
+
 	flag.Parse()
-	//debug
+
+	if isHelperServer {
+		err := helper.Server(helperAddr)
+		log.Fatal(err)
+		return
+	}
 
 	lm = utils.NewLockedMap()
 	p = NewPortal(dst)
@@ -46,7 +56,7 @@ func main() {
 				}
 			}
 			if a := helper.Get(helperAddr, name); a != nil {
-				fmt.Println(a)
+				log.Println(a)
 				arr = append(arr, a...)
 				cnt = 0
 			} else {
@@ -66,7 +76,7 @@ func main() {
 		r.HandleFunc("/", handleRoot)
 		r.HandleFunc("/{peer}", handlePeer)
 		err := http.ListenAndServe(address, r)
-		fmt.Println(err)
+		fmt.Fatal(err)
 	}
 }
 
@@ -95,9 +105,9 @@ func handlePeer(w http.ResponseWriter, r *http.Request) {
 			helper.Append(helperAddr, peer, p.GetLocalAddr(mode))
 			c := NewUDPMux(arg, m[peer], p)
 
-			fmt.Println(helperAddr, peer, p.GetLocalAddr(mode))
-			fmt.Println(arg, m[peer], p)
-			fmt.Println(c)
+			// fmt.Println(helperAddr, peer, p.GetLocalAddr(mode))
+			// fmt.Println(arg, m[peer], p)
+			// fmt.Println(c)
 
 			lm.Put(peer, c)
 		} else {
@@ -110,66 +120,10 @@ func handlePeer(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if r.Method == "GET" {
 		if c, ok := lm.Get(peer); ok {
-			fmt.Println(c)
+			// fmt.Println(c)
 			json.NewEncoder(w).Encode(c)
 		} else {
 			http.Error(w, "not found peer", http.StatusNotFound)
 		}
 	}
 }
-
-func helper8888() {
-	helper.Server("127.0.0.1:8888")
-}
-
-func server9999() {
-	p := NewPortal("127.0.0.1:9999")
-	go func() {
-		for {
-			time.Sleep(5 * time.Second)
-			fmt.Println(p.connMap.Size(), p.router.Size())
-			p.connMap.Iter(func(k string, v any) {
-				fmt.Println((k))
-			})
-		}
-	}()
-	time.Sleep(time.Minute)
-	time.Sleep(time.Minute)
-}
-
-func client3333() {
-	p := NewPortal("")
-	// go func() {
-	// 	for {
-	// 		time.Sleep(5 * time.Second)
-	// 		fmt.Println(p.connMap.Size(), p.router.Size())
-	// 		p.router.Iter(func(k string, v any) {
-	// 			fmt.Println((k))
-	// 		})
-	// 	}
-	// }()
-	laddr := "0.0.0.0:3333"
-	c := NewUDPMux(laddr, "127.0.0.1:4444", p)
-	// go func() {
-	// 	for {
-	// 		time.Sleep(5 * time.Second)
-	// 		fmt.Println(c)
-	// 		fmt.Println(c.connMap.Size())
-	// 		c.connMap.Iter(
-	// 			func(key string, value any) {
-	// 				fmt.Println([]byte(key))
-	// 			},
-	// 		)
-	// 	}
-	// }()
-	time.Sleep(time.Minute * 10)
-
-	c.Close()
-
-	time.Sleep(time.Minute)
-
-}
-
-// func main() {
-// 	utils.UDPEcho(":9999")
-// }

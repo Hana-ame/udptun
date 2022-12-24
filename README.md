@@ -9,6 +9,9 @@
 # as client
 # ./udptun.exe -a "[control addr:port]" -h "[help server]" -m "[udp4|udp6]"
 ./udptun.exe -a "localhost:8080" -n client -h "http://localhost:8888/"
+
+# as help server
+./udptun.exe -isHelpServer -h "127.0.0.1:8888"
 ```
 
 create a connection

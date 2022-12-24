@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"net"
-	"time"
 
 	"github.com/hana-ame/udptun/utils"
 )
@@ -14,12 +13,12 @@ type UDPMux struct {
 	dstAddr *net.UDPAddr
 	connMap *utils.LockedMap
 
-	portal *portal
+	portal *Portal
 
 	closed bool
 }
 
-func NewUDPMux(listen string, dst string, portal *portal) *UDPMux {
+func NewUDPMux(listen string, dst string, portal *Portal) *UDPMux {
 	addr, err := net.ResolveUDPAddr("udp", listen)
 	if err != nil {
 		panic(err)
@@ -94,35 +93,4 @@ func (c *UDPMux) Close() {
 	c.closed = true
 	c.portal.router.Remove(c.dstAddr.String())
 	c.UDPConn.Close()
-}
-
-type fakeUDPConn struct {
-	srcAddr *net.UDPAddr
-	srcConn *net.UDPConn
-
-	dstAddr *net.UDPAddr
-	dstConn *net.UDPConn
-
-	lastactivity int64
-}
-
-func NewFakeUDPConn(srcAddr *net.UDPAddr, srcConn *net.UDPConn, dstAddr *net.UDPAddr, dstConn *net.UDPConn) *fakeUDPConn {
-	return &fakeUDPConn{
-		srcAddr:      srcAddr,
-		srcConn:      srcConn,
-		dstAddr:      dstAddr,
-		dstConn:      dstConn,
-		lastactivity: time.Now().Unix(),
-	}
-}
-
-// do here
-func (c *fakeUDPConn) WriteToDst(b []byte) (int, error) {
-	c.lastactivity = time.Now().Unix()
-	return c.dstConn.WriteToUDP(b, c.dstAddr)
-}
-
-func (c *fakeUDPConn) WriteToSrc(b []byte) (int, error) {
-	c.lastactivity = time.Now().Unix()
-	return c.srcConn.WriteToUDP(b, c.srcAddr)
 }

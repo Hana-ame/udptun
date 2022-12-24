@@ -41,7 +41,7 @@ func (p PortalBuf) Raw(n int) PortalBuf {
 	return (p)[:n]
 }
 
-// length is n
-// func (p *PortalBuf) RawFromPortal(n int) PortalBuf {
-// 	return (p)[:n]
-// }
+// length is tagLength+n
+func (p PortalBuf) DataAndTag(n int) PortalBuf {
+	return (p)[:n+tagLength]
+}

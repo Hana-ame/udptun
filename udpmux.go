@@ -9,7 +9,10 @@ import (
 
 // a udpConn mux
 type UDPMux struct {
+	// listen on this conn
 	*net.UDPConn
+
+	// the address of the other portal
 	dstAddr *net.UDPAddr
 
 	// map[tag string]fc fakeUDPConn.
@@ -17,8 +20,10 @@ type UDPMux struct {
 	// tag is both: (1) the port of local conn, (2) the first 2 bytes of portalBuf
 	connMap *utils.LockedMap
 
+	// the portal it use
 	portal *Portal
 
+	// is closed
 	closed bool
 }
 
@@ -81,7 +86,7 @@ func (c *UDPMux) Run() {
 
 		if v, ok := c.connMap.Get(tag); ok {
 			if fc, ok := v.(*fakeUDPConn); ok {
-				fc.WriteToDst(buf.Data(n))
+				fc.WriteToDst(buf.DataAndTag(n))
 			} else {
 				log.Println("fakeConn is", fc, " not fakeUDPConn")
 				continue
@@ -90,7 +95,7 @@ func (c *UDPMux) Run() {
 			// create new fakeConn
 			if fc := NewFakeUDPConn(addr, c.UDPConn, c.dstAddr, c.portal.UDPConn); fc != nil {
 				c.connMap.Put(tag, fc)
-				fc.WriteToDst(buf.Data(n))
+				fc.WriteToDst(buf.DataAndTag(n))
 			} else {
 				log.Println("fakeConn is nil")
 				continue
@@ -100,6 +105,7 @@ func (c *UDPMux) Run() {
 	c.Close()
 }
 
+// TODO
 func (c *UDPMux) Close() {
 	if c.closed {
 		return

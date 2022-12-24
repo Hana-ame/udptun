@@ -22,5 +22,9 @@ func main() {
 	copy(b.Tag(), b.Data(0))
 	fmt.Println(b.Raw(4).Data(0))
 	fmt.Println(b.Tag())
+	b[3] = 5
+	b[0] = 0
+	fmt.Println(b.Raw(4).Data(0))
+	fmt.Println(b.Tag())
 
 }

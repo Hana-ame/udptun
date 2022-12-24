@@ -1,10 +1,26 @@
 package main
 
 import (
+	"fmt"
 	"time"
 )
 
 func main() {
+	p := NewPortal("127.0.0.1:9999")
+	go func() {
+		for {
+			time.Sleep(5 * time.Second)
+			fmt.Println(p.connMap.Size(), p.router.Size())
+			p.connMap.Iter(func(k string, v any) {
+				fmt.Println((k))
+			})
+		}
+	}()
+	time.Sleep(time.Minute)
+	time.Sleep(time.Minute)
+}
+
+func client3333() {
 	p := NewPortal("")
 	// go func() {
 	// 	for {
@@ -29,7 +45,7 @@ func main() {
 	// 		)
 	// 	}
 	// }()
-	time.Sleep(time.Minute)
+	time.Sleep(time.Minute * 10)
 
 	c.Close()
 

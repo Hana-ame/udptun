@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net"
 	"time"
@@ -31,12 +32,14 @@ type Portal struct {
 
 // "" means not accept remote
 func NewPortal(dst string) *Portal {
-
-	c, err := net.ListenUDP("udp", nil)
+	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:4444") // !!!!debug
+	c, err := net.ListenUDP("udp", addr)                   // !!!!debug
+	// c, err := net.ListenUDP("udp", nil)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("what?", err)
 		return nil
 	}
+
 	var dstAddr *net.UDPAddr = nil
 	if dst != "" {
 		dstAddr, err = net.ResolveUDPAddr("udp", dst)
@@ -102,7 +105,6 @@ func (p *Portal) Run() {
 			p.localAddr, err = utils.StunResolve(buf.Raw(n))
 			if err != nil {
 				log.Println("error when recv from stunServer", err)
-				continue
 			}
 		} else if v, ok := p.router.Get(addrString); ok {
 			// dst --> portal -X-> portal --> src
@@ -111,24 +113,25 @@ func (p *Portal) Run() {
 				handler(buf.Raw(n))
 			} else {
 				log.Println("invalid router") // never
-				continue
 			}
 		} else if p.dst != nil {
 			// src --> portal -X-> portal -X-> dst
 			tag := string(buf.Tag())
+			fmt.Println(addrString + tag)
 			if value, ok := p.connMap.Get(addrString + tag); ok {
-				if fc, ok := value.(fakeUDPConn); ok {
+				if fc, ok := value.(*fakeUDPConn); ok {
 					fc.WriteToSrc(buf.Raw(n).Data(0))
 				} else {
+					log.Println(fc, ok, value)  // never
 					log.Println("invalid conn") // never
-					continue
 				}
 			} else {
 				// didn't get conn
 				// create a new conn
-				c, err := net.DialUDP("udp", nil, p.dst)
+				c, err := net.ListenUDP("udp", nil)
 				if err != nil {
 					log.Println("DailUDP failed") // never
+					continue
 				}
 				fc := NewFakeUDPConn(
 					p.dst, c,
@@ -142,9 +145,8 @@ func (p *Portal) Run() {
 				p.connMap.Put(addrString+tag, fc)
 				fc.WriteToSrc(buf.Raw(n).Data(0))
 			}
-			log.Println("not supposed to be seen@protal run for loop")
 		}
-	}
+	} //for
 }
 
 // dst -X-> portal --> portal --> src

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net"
 	"time"
 )
@@ -43,6 +44,7 @@ func NewFakeUDPConn(
 // to portal, with tag
 func (c *fakeUDPConn) WriteToDst(b []byte) (int, error) {
 	c.lastactivity = time.Now().Unix()
+	// log.Println("WriteToDst ", len(b), c.dstConn.LocalAddr().String(), "->", c.dstAddr.String())
 	return c.dstConn.WriteToUDP(b, c.dstAddr)
 }
 
@@ -50,6 +52,7 @@ func (c *fakeUDPConn) WriteToDst(b []byte) (int, error) {
 // to udp, only data
 func (c *fakeUDPConn) WriteToSrc(b []byte) (int, error) {
 	c.lastactivity = time.Now().Unix()
+	// log.Println("WriteToSrc ", len(b), c.srcConn.LocalAddr().String(), "->", c.srcAddr.String())
 	return c.srcConn.WriteToUDP(b, c.srcAddr)
 }
 
@@ -64,6 +67,7 @@ func (c *fakeUDPConn) Run() {
 }
 
 func (c *fakeUDPConn) Close() {
+	log.Println("fakeUDPConn close")
 	c.closed = true
 	c.close()
 }

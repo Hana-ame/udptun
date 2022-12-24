@@ -39,9 +39,11 @@ func main() {
 		cnt := 0
 		var arr []string
 		for {
-			if laddr := p.GetLocalAddr(mode); laddr != "" {
-				helper.Post(helperAddr, name, laddr)
-				// time.Sleep(5 * time.Second)
+			if cnt%10 == 0 {
+				if laddr := p.GetLocalAddr(mode); laddr != "" {
+					helper.Post(helperAddr, name, laddr)
+					// time.Sleep(5 * time.Second)
+				}
 			}
 			if a := helper.Get(helperAddr, name); a != nil {
 				fmt.Println(a)

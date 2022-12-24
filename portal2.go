@@ -13,11 +13,20 @@ type Portal struct {
 	// stun
 	// stunServer string
 	localAddr string
+
 	// portal -> src
-	router utils.LockedMap // map[addr.String()]func(PortalBuf)
+	//
+	// map [addr.String()] func(PortalBuf)
+	// where addr is remote portal's address
+	// func(PortalBuf) is provided by udpmux.
+	router utils.LockedMap
+
 	// portal -> dst
-	dst     *net.UDPAddr
-	connMap utils.LockedMap // map[addr.String()]
+	// if dst is not nil, it will be used to send udp packets to dst
+	dst *net.UDPAddr
+	// map [addr.String() + tag] *fakeUDPConn
+	// send data for Conn here
+	connMap utils.LockedMap
 }
 
 // stun.
@@ -56,6 +65,7 @@ func (p *Portal) Run() {
 			log.Println(err)
 			continue
 		}
+		// addrString is the address of remote Portal
 		addrString := addr.String()
 		if addrString == stunServer {
 			// stun -X-> portal
@@ -64,16 +74,17 @@ func (p *Portal) Run() {
 				log.Println("error when recv from stunServer", err)
 				continue
 			}
-		} else if value, ok := p.router.Get(addrString); ok {
+		} else if v, ok := p.router.Get(addrString); ok {
 			// dst --> portal -X-> portal --> src
-			if handler, ok := value.(func(PortalBuf)); ok {
+			if handler, ok := v.(func(PortalBuf)); ok {
+				// handler is UDPMux.ReadFromPortal
 				handler(buf.Raw(n))
 			} else {
 				log.Println("invalid router") // never
 				continue
 			}
 		} else if p.dst != nil {
-			// src --> portal -X-> portal --> dst
+			// src --> portal -X-> portal -X-> dst
 			tag := string(buf.Tag())
 			if value, ok := p.connMap.Get(addrString + tag); ok {
 				if fc, ok := value.(fakeUDPConn); ok {
@@ -104,13 +115,13 @@ func (p *Portal) Run() {
 func handleUDPConn(fc *fakeUDPConn, p *Portal, tag any) {
 	defer fc.srcConn.Close()
 	buf := make(PortalBuf, 1500)
+	buf.AddTag(tag)
 	for !fc.closed {
 		n, err := fc.srcConn.Read(buf.Data(0))
 		if err != nil {
 			log.Println(err)
 			continue
 		}
-		buf.AddTag(tag)
-		fc.WriteToDst(buf.Raw(n))
+		fc.WriteToDst(buf.DataAndTag(n))
 	}
 }

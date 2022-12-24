@@ -4,7 +4,7 @@ https://asciiflow.com/
 
 UDPMux
 
-- add tag to packet between portals. 
+- ~~add tag to packet between portals. ~~
 - remove conns which are timeout.
 
 ## Portal(Client)

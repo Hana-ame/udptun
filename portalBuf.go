@@ -14,6 +14,14 @@ func (p PortalBuf) Tag() PortalBuf {
 // add tag to PortalBuf
 func (p PortalBuf) AddTag(tag any) PortalBuf {
 	if len(p) >= tagLength {
+		if t, ok := tag.(string); ok {
+			tag = []byte(t)
+		}
+		if t, ok := tag.([]byte); ok {
+			(p)[0] = t[0]
+			(p)[1] = t[1]
+			return (PortalBuf)(p)
+		}
 		if t, ok := tag.(int); ok {
 			(p)[0] = byte(t % 256)
 			(p)[1] = byte(t / 256)

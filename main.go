@@ -2,7 +2,9 @@ package main
 
 import "fmt"
 
-func proxy(addr string, p Portal) *UDPMux {
+// TODO
+// add a proxy from addr to remote
+func proxy(addr string, p *Portal) *UDPMux {
 	// listen udp local
 
 	// create UDPMux
@@ -24,6 +26,9 @@ func main() {
 	fmt.Println(b.Tag())
 	b[3] = 5
 	b[0] = 0
+	fmt.Println(b.Raw(4).Data(0))
+	fmt.Println(b.Tag())
+	fmt.Println(b.AddTag(string("ab")))
 	fmt.Println(b.Raw(4).Data(0))
 	fmt.Println(b.Tag())
 

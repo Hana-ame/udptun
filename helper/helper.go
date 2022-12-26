@@ -18,6 +18,7 @@ var mu sync.RWMutex
 var client *http.Client
 
 func Append(host string, name, laddr string) {
+	// TODO: timeout
 	_, err := http.Post(host+name, "application/json", strings.NewReader(laddr))
 	if err != nil {
 		log.Println(err)
@@ -25,6 +26,7 @@ func Append(host string, name, laddr string) {
 }
 
 func Get(host string, name string) []string {
+	// TODO: timeout
 	r, err := http.Get(host + name)
 	if err != nil {
 		log.Println(err)
@@ -43,6 +45,7 @@ func Get(host string, name string) []string {
 }
 
 func Post(host string, name, laddr string) map[string]string {
+	// TODO: timeout
 	r, err := http.Post(host, "application/json", strings.NewReader(name+","+laddr))
 	if err != nil {
 		log.Println(err)
@@ -59,6 +62,7 @@ func Post(host string, name, laddr string) map[string]string {
 }
 
 func Delete(host string, name string) {
+	// TODO: timeout
 	if client == nil {
 		client = &http.Client{
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {

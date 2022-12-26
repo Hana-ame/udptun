@@ -3,7 +3,9 @@ package main
 import (
 	"log"
 	"net"
+	"time"
 
+	"github.com/hana-ame/udptun/helper"
 	"github.com/hana-ame/udptun/utils"
 )
 
@@ -25,9 +27,14 @@ type UDPMux struct {
 
 	// is closed
 	closed bool
+
+	// peer, used for helperAppend
+	peer string
+	// last Recvtime
+	timestamp int64
 }
 
-func NewUDPMux(listen string, dst string, portal *Portal) *UDPMux {
+func NewUDPMux(listen string, dst string, portal *Portal, peer string) *UDPMux {
 	addr, err := net.ResolveUDPAddr("udp", listen)
 	if err != nil {
 		panic(err)
@@ -47,6 +54,7 @@ func NewUDPMux(listen string, dst string, portal *Portal) *UDPMux {
 		connMap: utils.NewLockedMap(),
 		portal:  portal,
 		closed:  false,
+		peer:    peer,
 	}
 
 	go c.Run()
@@ -56,6 +64,10 @@ func NewUDPMux(listen string, dst string, portal *Portal) *UDPMux {
 
 func (c *UDPMux) ReadFromPortal(buf PortalBuf) {
 	// dst --> portal --> portal -X-> src
+	c.timestamp = time.Now().Unix()
+	if len(buf) < tagLength {
+		return
+	}
 	tag := string(buf.Tag())
 	if v, ok := c.connMap.Get(tag); ok {
 		if fc, ok := v.(*fakeUDPConn); ok {
@@ -94,6 +106,9 @@ func (c *UDPMux) Run() {
 				continue
 			}
 		} else {
+			if time.Now().Unix()-c.timestamp > 5 {
+				go helper.Append(helperAddr, c.peer, p.GetLocalAddr(mode))
+			}
 			// create new fakeConn
 			if fc := NewFakeUDPConn(
 				addr, c.UDPConn,

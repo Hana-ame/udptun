@@ -108,9 +108,9 @@ func (p *Portal) Run() {
 		buf := make(PortalBuf, 1500)
 		// fmt.Println("reading")
 		n, addr, err := p.ReadFromUDP(buf)
-		if n == 0 {
-			continue
-		}
+		// if n == 0 {
+		// 	continue
+		// }
 		// when reading error
 		if err != nil {
 			log.Println(err)
@@ -134,6 +134,10 @@ func (p *Portal) Run() {
 			}
 		} else if p.dst != nil {
 			// src --> portal -X-> portal -X-> dst
+			if n < tagLength {
+				log.Println("never n < tagLength the pack from antoher portal")
+				return
+			}
 			tag := string(buf.Tag())
 			// fmt.Println(addrString + tag)
 			if value, ok := p.connMap.Get(addrString + tag); ok {

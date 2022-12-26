@@ -102,7 +102,7 @@ func handlePeer(w http.ResponseWriter, r *http.Request) {
 			// args := {remote addr, local addr}
 			arg := string(body)
 			helper.Append(helperAddr, peer, p.GetLocalAddr(mode))
-			c := NewUDPMux(arg, m[peer], p)
+			c := NewUDPMux(arg, m[peer], p, peer)
 
 			// fmt.Println(helperAddr, peer, p.GetLocalAddr(mode))
 			// fmt.Println(arg, m[peer], p)

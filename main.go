@@ -82,8 +82,31 @@ func main() {
 }
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {
-	m := helper.Post(helperAddr, "", "")
-	json.NewEncoder(w).Encode(m)
+	if r.Method == "GET" {
+		m := helper.Post(helperAddr, "", "")
+		json.NewEncoder(w).Encode(m)
+	} else if r.Method == "POST" {
+		defer r.Body.Close()
+		var m map[string]string
+		err := json.NewDecoder(r.Body).Decode(&m)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		local, ok := m["local"]
+		if !ok {
+			http.Error(w, "bad request, no local field", http.StatusBadRequest)
+			return
+		}
+		destination, ok := m["destination"]
+		if !ok {
+			http.Error(w, "bad request, no destination field", http.StatusBadRequest)
+			return
+		}
+
+		c := NewUDPMux(local, destination, p, "peer")
+		lm.Put(destination, c)
+	}
 }
 
 func handlePeer(w http.ResponseWriter, r *http.Request) {
@@ -100,6 +123,7 @@ func handlePeer(w http.ResponseWriter, r *http.Request) {
 			body, err := ioutil.ReadAll(r.Body)
 			if err != nil {
 				http.Error(w, "can not read body", http.StatusBadRequest)
+				return
 			}
 			// args := {remote addr, local addr}
 			arg := string(body)

@@ -48,12 +48,14 @@ func main() {
 		cnt := 0
 		var arr []string
 		for {
+			// every 10 seconds renew the server node.
 			if cnt%10 == 0 {
 				if laddr := p.GetLocalAddr(mode); laddr != "" {
 					helper.Post(helperAddr, name, laddr)
 					// time.Sleep(5 * time.Second)
 				}
 			}
+			// every second get peers and ping.
 			if a := helper.Get(helperAddr, name); a != nil {
 				log.Println(a)
 				arr = append(arr, a...)

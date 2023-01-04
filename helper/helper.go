@@ -17,6 +17,7 @@ var peer map[string][]string
 var mu sync.RWMutex
 var client *http.Client
 
+// regist as a client to the server node.
 func Append(host string, name, laddr string) {
 	// TODO: timeout
 	_, err := http.Post(host+name, "application/json", strings.NewReader(laddr))
@@ -25,6 +26,7 @@ func Append(host string, name, laddr string) {
 	}
 }
 
+// get peer list of this node
 func Get(host string, name string) []string {
 	// TODO: timeout
 	r, err := http.Get(host + name)
@@ -44,6 +46,7 @@ func Get(host string, name string) []string {
 	return arr
 }
 
+// regist as a server node to help server
 func Post(host string, name, laddr string) map[string]string {
 	// TODO: timeout
 	r, err := http.Post(host, "application/json", strings.NewReader(name+","+laddr))

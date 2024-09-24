@@ -1,0 +1,13 @@
+[submodule "tcp-over-websocket"]
+	path = tcp-over-websocket
+	url = git@github.com:Hana-ame/tcp-over-websocket.git
+[submodule "Tools"]
+	path = Tools
+	url = git@github.com:Hana-ame/Tools.git
+	branch = go
+[submodule "hysteria"]
+	path = hysteria
+	url = git@github.com:apernet/hysteria.git
+[submodule "kcp-go"]
+	path = kcp-go
+	url = git@github.com:Hana-ame/kcp-go.git

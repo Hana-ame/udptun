@@ -1,4 +1,4 @@
-module github.com/hana-ame/udptun
+module github.com/Hana-ame/udptun
 
 go 1.22
 

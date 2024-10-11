@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/hana-ame/udptun/helper"
-	"github.com/hana-ame/udptun/utils"
+	"github.com/Hana-ame/udptun/helper"
+	"github.com/Hana-ame/udptun/utils"
 )
 
 var p *Portal

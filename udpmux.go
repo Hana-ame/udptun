@@ -5,8 +5,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/hana-ame/udptun/helper"
-	"github.com/hana-ame/udptun/utils"
+	"github.com/Hana-ame/udptun/helper"
+	"github.com/Hana-ame/udptun/utils"
 )
 
 // a udpConn mux

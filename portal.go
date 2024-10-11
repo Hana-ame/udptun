@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hana-ame/udptun/utils"
+	"github.com/Hana-ame/udptun/utils"
 )
 
 type Portal struct {

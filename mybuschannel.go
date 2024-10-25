@@ -9,13 +9,13 @@ import (
 // 双向的。
 
 type BusChannel interface {
-	RecvChannel
 	SendChannel
+	RecvChannel
 }
 
 type RawBusChannel struct {
-	RecvChannel
 	SendChannel
+	RecvChannel
 }
 
 func NewLoopBusChannel() BusChannel {
@@ -88,5 +88,37 @@ func NewAlohaBusChannel(laddr Addr, bus BusChannel) BusChannel {
 		RecvChannel: rc,
 		localAddr:   laddr,
 		bus:         bus,
+	}
+}
+
+// 不能用
+func NewBusChannelFromBus(bus MyBus) BusChannel {
+	sc := make(RawChannel)
+	rc := make(RawChannel)
+	go func() {
+		for {
+			f, ok := <-sc
+			if !ok {
+				bus.Close()
+				return
+			}
+			err := bus.SendFrame(f)
+			if err != nil {
+				return
+			}
+		}
+	}()
+	go func() {
+		for {
+			f, err := bus.RecvFrame()
+			if err != nil {
+				return
+			}
+			rc <- f
+		}
+	}()
+	return RawBusChannel{
+		SendChannel: sc,
+		RecvChannel: rc,
 	}
 }

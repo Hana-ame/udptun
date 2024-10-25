@@ -228,3 +228,72 @@ func (b *MyNullBus) Close() (err error) {
 func NewNullBus() *MyNullBus {
 	return &MyNullBus{}
 }
+
+// 不能用
+type BusChannelBus struct {
+	BusChannel
+
+	closed bool
+}
+
+func (b *BusChannelBus) SendFrame(f MyFrame) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			b.closed = true
+			err = ERR_CLOSED
+		}
+	}()
+	if b.closed {
+		return ERR_CLOSED
+	}
+	b.SendChan() <- f
+	return
+}
+
+func (b *BusChannelBus) RecvFrame() (f MyFrame, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			b.closed = true
+			err = ERR_CLOSED
+		}
+	}()
+
+	if b.closed {
+		return nil, ERR_CLOSED
+	}
+	var ok bool
+	f, ok = <-b.RecvChan()
+	if !ok {
+		b.closed = true
+		err = ERR_CLOSED
+		return
+	}
+	return
+}
+
+func (b *BusChannelBus) Close() (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			b.closed = true
+			err = ERR_CLOSED
+		}
+	}()
+
+	if b.closed {
+		return ERR_CLOSED
+	}
+
+	CloseCh(b.BusChannel.RecvChan())
+	CloseCh(b.BusChannel.SendChan())
+
+	b.closed = true
+
+	return
+}
+
+func NewBusFromBusChannel(bus BusChannel) MyBus {
+	return &BusChannelBus{
+		bus,
+		false,
+	}
+}

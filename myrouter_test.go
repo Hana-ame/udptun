@@ -16,4 +16,6 @@ func TestRoute(t *testing.T) {
 	r.Add(pong2)
 
 	debug.I(r.ConcurrentHashMap)
+
+	DebugHelperReader("png1", pong1)
 }

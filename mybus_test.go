@@ -17,6 +17,8 @@ func DebugHelperReader(tag string, reader MyBusReader) error {
 	}
 }
 
+// 241025
+// 回环测试，bus应该好用吧，大概。
 func TestErr(t *testing.T) {
 	reader1, writer2 := NewSyncPipe()
 	reader2, writer1 := NewSyncPipe()
@@ -24,13 +26,18 @@ func TestErr(t *testing.T) {
 	bus2 := NewBus(reader2, writer2)
 	go Copy(bus2.MyBusWriter, bus2.MyBusReader)
 	go DebugHelperReader("bus1", bus1)
+	// go DebugHelperReader("bus2", bus2)
 	bus1.SendFrame(NewFrame(
-		0, 1, 2, Data, 0, 0, []byte("1111"),
+		0, 1, 2, Data, 0, 0, []byte("1"),
 	))
 	bus1.SendFrame(NewFrame(
-		0, 1, 2, Data, 0, 0, []byte("1111"),
+		0, 1, 2, Data, 0, 0, []byte("2"),
 	))
 	bus1.SendFrame(NewFrame(
-		0, 1, 2, Data, 0, 0, []byte("1111"),
+		0, 1, 2, Data, 0, 0, []byte("3"),
+	))
+
+	bus2.SendFrame(NewFrame(
+		0, 1, 2, Data, 0, 0, []byte("4"),
 	))
 }

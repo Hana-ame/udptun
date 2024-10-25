@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"sync"
 )
 
 type Error string
@@ -46,6 +47,34 @@ type MyBus interface {
 
 	io.Closer
 }
+
+type MyMergedBusReader struct {
+	bus0 MyBusReader
+	bus1 MyBusReader
+
+	closed bool
+
+	sync.Cond
+}
+
+// 不能用
+func (b *MyMergedBusReader) RecvFrame() (f MyFrame, err error) {
+	go func() {
+		f, err = b.bus0.RecvFrame()
+		b.Signal()
+	}()
+	go func() {
+		f, err = b.bus1.RecvFrame()
+		b.Signal()
+	}()
+	b.L.Lock()
+	for f == nil && !b.closed {
+		b.Wait()
+	}
+	b.L.Unlock()
+	return
+}
+
 type MyBusWrapper struct {
 	MyBusReader
 	MyBusWriter
@@ -74,6 +103,41 @@ func NewBus(reader MyBusReader, writer MyBusWriter) *MyBusWrapper {
 		MyBusReader: reader,
 		MyBusWriter: writer,
 	}
+}
+
+type MyAlohaBus struct {
+	localAddr Addr
+	C         chan MyFrame
+	MyBus
+	// sync.Cond
+}
+
+func (b *MyAlohaBus) SendFrame(f MyFrame) (err error) {
+	if f.Command() == Aloha {
+		data := make([]byte, 2)
+		binary.BigEndian.PutUint16(data, uint16(b.localAddr))
+		b.C <- NewFrame(b.localAddr, f.Source(), f.Port(), Aloha, 0, 0, data)
+		// b.Signal()
+		return
+	}
+
+	return b.MyBus.SendFrame(f)
+}
+
+func (b *MyAlohaBus) RecvFrame() (f MyFrame, err error) {
+	// if
+	return
+}
+
+func (b *MyAlohaBus) Close() (err error) {
+	defer func() {
+		r := recover()
+		if r != nil {
+			err = fmt.Errorf("%s", r)
+		}
+	}()
+	close(b.C)
+	return
 }
 
 // 会响应aloha，但其实应该填充到C里面

@@ -1,6 +1,10 @@
 package main
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/Hana-ame/udptun/Tools/debug"
+)
 
 // MySyncPipe 定义了一个管道结构，用于在读取和写入之间传递数据。
 type MySyncPipe struct {
@@ -68,4 +72,25 @@ func (p *MySyncPipe) Close() (err error) {
 func NewSyncPipe() (MyBusReader, MyBusWriter) {
 	pipe := &MySyncPipe{Cond: sync.NewCond(&sync.Mutex{})}
 	return pipe, pipe // 返回同一个管道的读写接口
+}
+
+func NewDebugPipe(tag string) (MyBusReader, MyBusWriter) {
+	reader := &MySyncPipe{Cond: sync.NewCond(&sync.Mutex{})}
+	writer := &MySyncPipe{Cond: sync.NewCond(&sync.Mutex{})}
+	go func() {
+		for {
+			f, e := writer.RecvFrame()
+			if e != nil {
+				debug.E(tag, e) // 记录错误
+				continue
+			}
+			debug.D(tag, SprintFrame(f)) // 打印帧内容
+			e = reader.SendFrame(f)      // 发送帧到读管道
+			if e != nil {
+				debug.E(tag, e) // 记录错误
+			}
+
+		}
+	}()
+	return reader, writer // 返回同一个管道的读写接口
 }

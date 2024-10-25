@@ -79,3 +79,12 @@ func (r *MyRouter) Add(bus MyBus) error {
 
 	return nil
 }
+
+func NewRouter(localAddr Addr, bus MyBus) *MyRouter {
+	return &MyRouter{
+		localAddr:         localAddr,
+		ConcurrentHashMap: tools.NewConcurrentHashMap[Addr, MyBus](),
+
+		bus: bus,
+	}
+}

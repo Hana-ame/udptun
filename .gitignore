@@ -1,6 +1,6 @@
 *.exe
 *.exe~
 *.zip
-
+__debug_*
 release
 kcptun

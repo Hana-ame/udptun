@@ -7,6 +7,23 @@ import (
 	"strconv"
 )
 
+const (
+	FrameHeadLength int = 8 // 帧头长度
+
+	Data  Command = 0 // 数据命令
+	Close Command = 1 // 关闭命令
+
+	Aloha Command = 1 << 2 // Aloha 命令
+
+	Pong Command = 1 << 3
+	// UDP 用于无序数据
+	Disorder            Command = 1 << 4
+	DisorderAcknowledge Command = 1<<4 | 1
+	// MUX 命令
+	Request Command = 1<<6 | 1 // 请求命令
+	Accept  Command = 1<<6 | 2 // 确认命令
+)
+
 // Command 定义了一个命令类型，基于 uint8。
 type Command uint8
 
@@ -19,6 +36,8 @@ func (cmd Command) String() string {
 		return "Close"
 	case Aloha:
 		return "Aloha"
+	case Pong:
+		return "Pong"
 	case Request:
 		return "Request"
 	case Accept:
@@ -35,10 +54,6 @@ func (cmd Command) String() string {
 // Addr 定义了一个地址类型，基于 uint16。
 type Addr uint16
 
-// const (
-// 	ANY_ADDR Addr = 65535
-// )
-
 // NetWork 方法返回地址的网络类型。
 func (a Addr) NetWork() string {
 	return "mymux"
@@ -49,25 +64,6 @@ func (a Addr) String() string {
 	return strconv.Itoa(int(a))
 }
 
-// 常量定义
-const (
-	FrameHeadLength int = 8 // 帧头长度
-
-	// 命令定义
-	Data  Command = 0      // 数据命令
-	Close Command = 1      // 关闭命令
-	Aloha Command = 1 << 2 // Aloha 命令
-
-	Pong Command = 1 << 3
-	// UDP 用于无序数据
-	Disorder            Command = 1 << 4
-	DisorderAcknowledge Command = 1<<4 | 1
-	// MUX 命令
-	Request Command = 1<<6 | 1 // 请求命令
-	Accept  Command = 1<<6 | 2 // 确认命令
-)
-
-// MyFrame 定义了一个帧类型，基于字节切片。
 // src, src, dst, dst, port, cmd, seqn, ackn, data...
 type MyFrame []byte
 
@@ -132,7 +128,6 @@ func SprintFrame(f MyFrame) string {
 		f.Data())
 }
 
-// Tag 方法获取帧的标签。
 // src, src, dst, dst, port
 func (f MyFrame) Tag() MyTag {
 	var tag MyTag
@@ -207,6 +202,7 @@ func (f MyFrame) SetAcknowledgeNumber(acknowledge uint8) {
 
 // 设置数据内容
 func (f MyFrame) SetData(data []byte) int {
+	// f = f[:FrameHeadLength+len(data)] // 没用的
 	if len(data) > 0 {
 		return copy(f[FrameHeadLength:], data) // 将数据复制到帧的适当位置
 	}

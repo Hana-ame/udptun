@@ -3,11 +3,14 @@ module github.com/Hana-ame/udptun
 go 1.23
 
 require (
+	github.com/andybalholm/brotli v1.1.1
 	github.com/fatih/color v1.17.0
 	github.com/gin-gonic/gin v1.10.0
 	github.com/glebarez/go-sqlite v1.22.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.3
+	github.com/jucardi/go-streams/v2 v2.0.2
+	github.com/klauspost/compress v1.17.11
 	golang.org/x/sys v0.26.0
 )
 

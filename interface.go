@@ -1,10 +1,28 @@
 package main
 
-type FrameHandler interface {
-	Push(f Frame) error
-	Poll() (f Frame, err error)
+import "io"
 
-	Close() error
+type FramePushHandler interface {
+	Push(f Frame) error
+}
+type FramePollHandler interface {
+	Poll() (f Frame, err error)
+}
+
+type FramePushCloserHandler interface {
+	FramePushHandler
+	io.Closer
+}
+
+type FramePollCloserHandler interface {
+	FramePollHandler
+	io.Closer
+}
+
+type FrameHandler interface {
+	FramePushHandler
+	FramePollHandler
+	io.Closer
 }
 
 type FrameHandlerInterface struct {

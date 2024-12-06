@@ -48,9 +48,9 @@ func (cmd Command) String() string {
 		return "Close"
 	case Aloha:
 		return "Aloha"
-	case Request:
+	case ClientRequest:
 		return "Request"
-	case Accept:
+	case ServerAccept:
 		return "Acknowledge"
 	case Disorder:
 		return "Disorder"
@@ -86,8 +86,8 @@ const (
 	Disorder            Command = 1 << 4
 	DisorderAcknowledge Command = 1<<4 | 1
 	// MUX 命令
-	Request Command = 1<<6 | 1 // 请求命令
-	Accept  Command = 1<<6 | 2 // 确认命令
+	ClientRequest Command = 1<<6 | 1 // 请求命令
+	ServerAccept  Command = 1<<6 | 2 // 确认命令
 )
 
 // Frame 定义了一个帧类型，基于字节切片。

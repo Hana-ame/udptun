@@ -67,6 +67,7 @@ func Copy(dst, src FrameHandler) error {
 		if err != nil {
 			return err
 		}
+		// debug.T("copy", SprintFrame(f))
 		err = dst.Push(f)
 		if err != nil {
 			return err

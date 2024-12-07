@@ -54,7 +54,7 @@ func recv(c FrameHandler, tag string) {
 	}
 }
 
-func conn(client *Client, tag string) *ClientConn {
+func conn(client *PortClient, tag string) *PortConn {
 	c, _ := client.Dial()
 	go send(c, tag)
 	go recv(c, tag)
@@ -62,8 +62,8 @@ func conn(client *Client, tag string) *ClientConn {
 }
 
 func TestClient(t *testing.T) {
-	mux := NewMux()
-	client := NewClient(0, 0, mux)
+	mux := NewPortMux()
+	client := NewPortClient(0, 0, mux)
 	// debug.T("client", client)
 	// rif := client.RouterInterface()
 	// f, e := rif.Poll()
@@ -89,7 +89,7 @@ func TestClient(t *testing.T) {
 	time.Sleep(time.Second * 10)
 }
 
-func testServer(server *Server) {
+func testServer(server *PortServer) {
 	for {
 		// c1, _ := server.Accept()
 		// send(c1, "server send")
@@ -102,12 +102,12 @@ func testServer(server *Server) {
 }
 
 func TestClientServer(t *testing.T) {
-	smux := NewMux()
-	server := NewServer(33, 44, smux)
+	smux := NewPortMux()
+	server := NewPortServer(33, 44, smux)
 	go testServer(server)
 
-	cmux := NewMux()
-	client := NewClient(222, 111, cmux)
+	cmux := NewPortMux()
+	client := NewPortClient(222, 111, cmux)
 
 	go Copy(client.RouterInterface(), server.RouterInterface())
 	go Copy(server.RouterInterface(), client.RouterInterface())
@@ -122,7 +122,7 @@ func TestClientServer(t *testing.T) {
 	time.Sleep(5 * time.Second)
 	c4.Close()
 
-	fmt.Println(client.Mux)
+	fmt.Println(client.PortMux)
 
 	time.Sleep(time.Second * 10)
 

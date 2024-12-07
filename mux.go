@@ -7,34 +7,34 @@ import (
 	"github.com/Hana-ame/udptun/Tools/debug"
 )
 
-type Mux struct {
+type PortMux struct {
 	*tools.ConcurrentHashMap[uint8, FramePushCloserHandler] // port, router interface
 
 	*Pipe
 }
 
-func (m *Mux) Push(f Frame) error {
+func (m *PortMux) Push(f Frame) error {
 	return m.GetOrDefault(f.Port(), m.Pipe).Push(f)
 }
 
-func (m *Mux) Close() error {
+func (m *PortMux) Close() error {
 	m.ConcurrentHashMap.ForEach(func(key uint8, value FramePushCloserHandler) {
 		defer value.Close()
 	})
 	return m.Pipe.Close()
 }
 
-func NewMux() *Mux {
-	return &Mux{
+func NewPortMux() *PortMux {
+	return &PortMux{
 		ConcurrentHashMap: tools.NewConcurrentHashMap[uint8, FramePushCloserHandler](),
 		Pipe:              NewPipe(),
 	}
 }
 
-type ClientConn struct {
+type PortConn struct {
 	FramePushHandler
 
-	*Mux
+	*PortMux
 
 	*Pipe
 
@@ -47,7 +47,7 @@ type ClientConn struct {
 
 // 不要调用多次
 // 调用多次可能的情况是最开始的几个frame会丢失掉
-func (c *ClientConn) Request() error {
+func (c *PortConn) Request() error {
 	if c.requested {
 		return nil
 	}
@@ -70,7 +70,7 @@ func (c *ClientConn) Request() error {
 	return nil
 }
 
-func (c *ClientConn) Close() error {
+func (c *PortConn) Close() error {
 	if c.closed {
 		return nil
 	}
@@ -84,7 +84,7 @@ func (c *ClientConn) Close() error {
 	return c.Pipe.Close()
 }
 
-func (c *ClientConn) Poll() (Frame, error) {
+func (c *PortConn) Poll() (Frame, error) {
 	f, err := c.Pipe.Poll()
 	if err != nil {
 		return f, err
@@ -96,43 +96,44 @@ func (c *ClientConn) Poll() (Frame, error) {
 	return f, err
 }
 
-func (c *ClientConn) Push(f Frame) error {
+func (c *PortConn) Push(f Frame) error {
 	f.SetPort(c.port)
 	return c.FramePushHandler.Push(f)
 }
 
-func (c *ClientConn) ApplicatonInterface() FrameHandlerInterface {
+// 是完整解耦合的，并且可以直接用。
+func (c *PortConn) ApplicatonInterface() FrameHandlerInterface {
 	return FrameHandlerInterface{
 		push:  c.Push,
 		poll:  c.Poll,
 		close: c.Close,
 	}
 }
-func (c *ClientConn) RouterInterface() FramePushCloserHandler {
+func (c *PortConn) RouterInterface() FramePushCloserHandler {
 	return FrameHandlerInterface{
 		push:  c.Pipe.Push,
-		poll:  nil, // 直接推到Client/Server
+		poll:  nil, // 耦合的，直推，不能从Mux取，会乱。
 		close: c.Close,
 	}
 }
 
-type Client struct {
+type PortClient struct {
 	local  Addr
 	remote Addr
 
 	port uint8
 
-	*Mux
+	*PortMux
 	*Pipe
 }
 
-func NewClient(local, remote Addr, mux *Mux) *Client {
-	client := &Client{
+func NewPortClient(local, remote Addr, mux *PortMux) *PortClient {
+	client := &PortClient{
 		local:  local,
 		remote: remote,
 
-		Mux:  mux,
-		Pipe: NewPipe(),
+		PortMux: mux,
+		Pipe:    NewPipe(),
 	}
 
 	handler := func() error {
@@ -162,23 +163,23 @@ func NewClient(local, remote Addr, mux *Mux) *Client {
 	return client
 }
 
-func (c *Client) ClientConn() *ClientConn {
+func (c *PortClient) PortConn() *PortConn {
 	if c.port == 0 {
 		c.port++
 	}
-	return &ClientConn{
+	return &PortConn{
 		FramePushHandler: c.ApplicatonInterface(),
-		Mux:              c.Mux,
+		PortMux:          c.PortMux,
 		Pipe:             NewPipe(),
 		port:             c.port,
 	}
 }
 
-func (c *Client) Dial() (*ClientConn, error) {
-	conn := c.ClientConn()
+func (c *PortClient) Dial() (*PortConn, error) {
+	conn := c.PortConn()
 	for !c.PutIfAbsent(conn.port, conn.RouterInterface()) {
 		c.port++
-		conn = c.ClientConn()
+		conn = c.PortConn()
 	}
 
 	if err := conn.Request(); err != nil {
@@ -188,55 +189,58 @@ func (c *Client) Dial() (*ClientConn, error) {
 
 	return conn, nil
 }
-func (c *Client) Close() error {
-	c.Mux.Close()
+func (c *PortClient) Close() error {
+	c.PortMux.Close()
 	return c.Pipe.Close()
 }
 
-func (c *Client) Push(f Frame) error {
+func (c *PortClient) Push(f Frame) error {
 	f.SetSource(c.local)
 	f.SetDestination(c.remote)
 	return c.Pipe.Push(f)
 }
 
-func (c *Client) ApplicatonInterface() FramePushHandler {
+func (c *PortClient) ApplicatonInterface() FramePushHandler {
 	return FrameHandlerInterface{
 		push:  c.Push,
 		poll:  nil, // 从Mux得到map直连
 		close: nil, // 不需要
 	}
 }
-func (c *Client) RouterInterface() FrameHandler {
+
+// 是完整解耦合的
+func (c *PortClient) RouterInterface() FrameHandler {
 	return FrameHandlerInterface{
-		push:  c.Mux.Push,
+		push:  c.PortMux.Push,
 		poll:  c.Pipe.Poll,
 		close: c.Close,
 	}
 }
 
-type Server struct {
+type PortServer struct {
 	local  Addr
 	remote Addr
 
-	AcceptChan chan *ClientConn
+	AcceptChan chan *PortConn
 
-	*Mux
+	*PortMux
 	*Pipe
 }
 
-func NewServer(local, remote Addr, mux *Mux) *Server {
-	server := &Server{
+func NewPortServer(local, remote Addr, mux *PortMux) *PortServer {
+	server := &PortServer{
 		local:  local,
 		remote: remote,
 
-		AcceptChan: make(chan *ClientConn, 5),
+		AcceptChan: make(chan *PortConn, 5),
 
-		Mux:  mux,
-		Pipe: NewPipe(),
+		PortMux: mux,
+		Pipe:    NewPipe(),
 	}
 
 	handler := func() error {
 		for {
+			// 处理所有不在
 			f, err := mux.Poll()
 			if err != nil {
 				debug.E("client's mux handler", err)
@@ -247,18 +251,19 @@ func NewServer(local, remote Addr, mux *Mux) *Server {
 				continue
 			}
 
-			// 可能需要修改一下
+			// 是请求的情况下。
 			if f.Command() == ClientRequest {
 				port := f.Port()
 				if mux.Contains(port) {
+					// 如果port还存在就返回不让。
 					err = server.Pipe.Push(NewFrame(local, remote, f.Port(), Close, 0, 0, []byte{}))
-
 					if err != nil {
 						debug.E("client's mux handler", err)
 						return server.Close()
 					}
-				} else { // 可以accept
-					conn := server.ClientConn(port)
+				} else {
+					// 如果可以创建那就创建了。
+					conn := server.PortConn(port)
 					server.Pipe.Push(NewFrame(local, remote, f.Port(), ServerAccept, 0, 0, []byte{}))
 					server.AcceptChan <- conn
 					server.Put(port, conn.RouterInterface())
@@ -279,41 +284,43 @@ func NewServer(local, remote Addr, mux *Mux) *Server {
 
 	return server
 }
-func (s *Server) ClientConn(port uint8) *ClientConn {
-	return &ClientConn{
+func (s *PortServer) PortConn(port uint8) *PortConn {
+	return &PortConn{
 		FramePushHandler: s.ApplicatonInterface(),
-		Mux:              s.Mux,
+		PortMux:          s.PortMux,
 		Pipe:             NewPipe(),
 		port:             port,
 	}
 }
 
-func (s *Server) Accept() (*ClientConn, error) {
+func (s *PortServer) Accept() (*PortConn, error) {
 	conn := <-s.AcceptChan
 	return conn, nil
 }
 
-func (s *Server) Close() error {
-	s.Mux.Close()
+func (s *PortServer) Close() error {
+	s.PortMux.Close()
 	return s.Pipe.Close()
 }
 
-func (s *Server) Push(f Frame) error {
+func (s *PortServer) Push(f Frame) error {
 	f.SetSource(s.local)
 	f.SetDestination(s.remote)
 	return s.Pipe.Push(f)
 }
 
-func (s *Server) ApplicatonInterface() FramePushHandler {
+func (s *PortServer) ApplicatonInterface() FramePushHandler {
 	return FrameHandlerInterface{
 		push:  s.Push,
 		poll:  nil, // Mux直连
 		close: nil, // 待定
 	}
 }
-func (s *Server) RouterInterface() FrameHandler {
+
+// 是完整解耦合的
+func (s *PortServer) RouterInterface() FrameHandler {
 	return FrameHandlerInterface{
-		push:  s.Mux.Push,
+		push:  s.PortMux.Push,
 		poll:  s.Pipe.Poll,
 		close: s.Close,
 	}

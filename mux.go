@@ -137,20 +137,23 @@ func NewPortClient(local, remote Addr, mux *PortMux) *PortClient {
 	}
 
 	handler := func() error {
+		defer client.Close()
 		for {
-			// debug.T("clinet's mux handler", mux)
+			// 所有的f都是map中没有储存过的port响应
 			f, err := mux.Poll()
 			if err != nil {
 				debug.E("client's mux handler", err)
 				return client.Close()
 			}
+
 			// 不响应已经关闭了的连接的Close请求
 			if f.Command() == Close {
 				continue
 			}
+
+			// 其他情况告知这里已经没有了
 			src := f.Source()
 			dst := f.Destination()
-			// debug.T("clinet's mux handler", client.Pipe)
 			err = client.Pipe.Push(NewFrame(dst, src, f.Port(), Close, 0, 0, []byte{}))
 			if err != nil {
 				debug.E("client's mux handler", err)
@@ -239,44 +242,38 @@ func NewPortServer(local, remote Addr, mux *PortMux) *PortServer {
 	}
 
 	handler := func() error {
+		defer server.Close()
 		for {
-			// 处理所有不在
+			// 处理所有不在map中的请求
 			f, err := mux.Poll()
 			if err != nil {
 				debug.E("client's mux handler", err)
 				return server.Close()
 			}
+
 			// 不响应已经关闭了的连接的Close请求
 			if f.Command() == Close {
 				continue
 			}
 
-			// 是请求的情况下。
-			if f.Command() == ClientRequest {
-				port := f.Port()
-				if mux.Contains(port) {
-					// 如果port还存在就返回不让。
-					err = server.Pipe.Push(NewFrame(local, remote, f.Port(), Close, 0, 0, []byte{}))
-					if err != nil {
-						debug.E("client's mux handler", err)
-						return server.Close()
-					}
-				} else {
-					// 如果可以创建那就创建了。
-					conn := server.PortConn(port)
-					server.Pipe.Push(NewFrame(local, remote, f.Port(), ServerAccept, 0, 0, []byte{}))
-					server.AcceptChan <- conn
-					server.Put(port, conn.RouterInterface())
-				}
-			} else if f.Command() != Close {
-				err = server.Pipe.Push(NewFrame(local, remote, f.Port(), Close, 0, 0, []byte{}))
-
-				if err != nil {
-					debug.E("client's mux handler", err)
-					return server.Close()
-				}
-
+			// 是请求的情况下，进行响应
+			if f.Command() == ClientRequest && !mux.Contains(f.Port()) {
+				// 仅在是Request并且map中空缺port的情况下创建
+				conn := server.PortConn(f.Port())
+				server.AcceptChan <- conn
+				server.Pipe.Push(NewFrame(local, remote, f.Port(), ServerAccept, 0, 0, []byte{}))
+				server.Put(f.Port(), conn.RouterInterface())
 			}
+
+			// 其他情况告知这里已经没有了
+			src := f.Source()
+			dst := f.Destination()
+			err = server.Pipe.Push(NewFrame(dst, src, f.Port(), Close, 0, 0, []byte{}))
+			if err != nil {
+				debug.E("server's mux handler", err)
+				return server.Close()
+			}
+
 		}
 	}
 

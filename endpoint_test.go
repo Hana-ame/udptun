@@ -123,7 +123,7 @@ func TestTCPEndpointWithConn(t *testing.T) {
 
 	ep := &IOReadWriteCloserEndpoint{ReadWriteCloser: conn}
 
-	c := NewConn(0, 0, 0)
+	c := NewConn()
 
 	go DebugCopy(c.RouterInterface(), ep)
 	go DebugCopy(ep, c.RouterInterface())

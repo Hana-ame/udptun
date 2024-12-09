@@ -7,7 +7,7 @@ import (
 )
 
 func TestConn(t *testing.T) {
-	c := NewConn(0, 0, 0)
+	c := NewConn()
 	go Copy(c.RouterInterface(), c.RouterInterface())
 	// go Copy(c.RouterInterface(), c.RouterInterface())
 	writer := FrameWriter{FrameHandler: c.ApplicatonInterface(), MTU: 100000}

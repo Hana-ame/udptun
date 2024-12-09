@@ -7,30 +7,6 @@ import (
 	"github.com/Hana-ame/udptun/Tools/debug"
 )
 
-type PortMux struct {
-	*tools.ConcurrentHashMap[uint8, FramePushCloserHandler] // port, router interface
-
-	*Pipe
-}
-
-func (m *PortMux) Push(f Frame) error {
-	return m.GetOrDefault(f.Port(), m.Pipe).Push(f)
-}
-
-func (m *PortMux) Close() error {
-	m.ConcurrentHashMap.ForEach(func(key uint8, value FramePushCloserHandler) {
-		defer value.Close()
-	})
-	return m.Pipe.Close()
-}
-
-func NewPortMux() *PortMux {
-	return &PortMux{
-		ConcurrentHashMap: tools.NewConcurrentHashMap[uint8, FramePushCloserHandler](),
-		Pipe:              NewPipe(),
-	}
-}
-
 type PortConn struct {
 	FramePushHandler
 
@@ -117,6 +93,34 @@ func (c *PortConn) RouterInterface() FramePushCloserHandler {
 	}
 }
 
+// 单向
+type PortMux struct {
+	*tools.ConcurrentHashMap[uint8, *PortConn] // port, router interface
+
+	*Pipe
+}
+
+func (m *PortMux) Push(f Frame) error {
+	if portMux, ok := m.Get(f.Port()); ok {
+		return portMux.Push(f)
+	}
+	return m.Pipe.Push(f)
+}
+
+func (m *PortMux) Close() error {
+	m.ConcurrentHashMap.ForEach(func(key uint8, value *PortConn) {
+		defer value.Close()
+	})
+	return m.Pipe.Close()
+}
+
+func NewPortMux(pipe *Pipe) *PortMux {
+	return &PortMux{
+		ConcurrentHashMap: tools.NewConcurrentHashMap[uint8, *PortConn](),
+		Pipe:              pipe,
+	}
+}
+
 type PortClient struct {
 	local  Addr
 	remote Addr
@@ -154,6 +158,9 @@ func NewPortClient(local, remote Addr, mux *PortMux) *PortClient {
 			// 其他情况告知这里已经没有了
 			src := f.Source()
 			dst := f.Destination()
+			if dst != local {
+				continue
+			}
 			err = client.Pipe.Push(NewFrame(dst, src, f.Port(), Close, 0, 0, []byte{}))
 			if err != nil {
 				debug.E("client's mux handler", err)
@@ -180,7 +187,7 @@ func (c *PortClient) PortConn() *PortConn {
 
 func (c *PortClient) Dial() (*PortConn, error) {
 	conn := c.PortConn()
-	for !c.PutIfAbsent(conn.port, conn.RouterInterface()) {
+	for !c.PutIfAbsent(conn.port, conn) {
 		c.port++
 		conn = c.PortConn()
 	}
@@ -226,18 +233,46 @@ type PortServer struct {
 
 	AcceptChan chan *PortConn
 
-	*PortMux
+	*AddrMux
 	*Pipe
 }
 
-func NewPortServer(local, remote Addr, mux *PortMux) *PortServer {
+// 单向
+type AddrMux struct {
+	*tools.ConcurrentHashMap[Addr, *PortMux] // port, router interface
+
+	*Pipe
+}
+
+func (m *AddrMux) Push(f Frame) error {
+	if portMux, ok := m.Get(f.Source()); ok {
+		return portMux.Push(f)
+	}
+	return m.Pipe.Push(f)
+}
+
+func (m *AddrMux) Close() error {
+	m.ConcurrentHashMap.ForEach(func(key Addr, value *PortMux) {
+		defer value.Close()
+	})
+	return m.Pipe.Close()
+}
+
+func NewAddrMux() *AddrMux {
+	return &AddrMux{
+		ConcurrentHashMap: tools.NewConcurrentHashMap[Addr, *PortMux](),
+		Pipe:              NewPipe(),
+	}
+}
+
+func NewPortServer(local, remote Addr, mux *AddrMux) *PortServer {
 	server := &PortServer{
 		local:  local,
 		remote: remote,
 
 		AcceptChan: make(chan *PortConn, 5),
 
-		PortMux: mux,
+		AddrMux: mux,
 		Pipe:    NewPipe(),
 	}
 
@@ -257,17 +292,27 @@ func NewPortServer(local, remote Addr, mux *PortMux) *PortServer {
 			}
 
 			// 是请求的情况下，进行响应
-			if f.Command() == ClientRequest && !mux.Contains(f.Port()) {
-				// 仅在是Request并且map中空缺port的情况下创建
-				conn := server.PortConn(f.Port())
-				server.AcceptChan <- conn
-				server.Pipe.Push(NewFrame(local, remote, f.Port(), ServerAccept, 0, 0, []byte{}))
-				server.Put(f.Port(), conn.RouterInterface())
+			if f.Command() == ClientRequest {
+				if !mux.Contains(f.Source()) {
+					portMux := NewPortMux(server.AddrMux.Pipe)
+					server.AddrMux.Put(f.Source(), portMux)
+				}
+				portMux, ok := mux.Get(f.Source())
+				if ok && !portMux.Contains(f.Port()) {
+					// 仅在是Request并且map中空缺port的情况下创建
+					conn := server.PortConn((f.Source()), f.Port())
+					server.AcceptChan <- conn
+					server.Pipe.Push(NewFrame(local, remote, f.Port(), ServerAccept, 0, 0, []byte{}))
+					portMux.Put(f.Port(), conn)
+				}
 			}
 
 			// 其他情况告知这里已经没有了
 			src := f.Source()
 			dst := f.Destination()
+			if dst != local {
+				continue
+			}
 			err = server.Pipe.Push(NewFrame(dst, src, f.Port(), Close, 0, 0, []byte{}))
 			if err != nil {
 				debug.E("server's mux handler", err)
@@ -281,10 +326,14 @@ func NewPortServer(local, remote Addr, mux *PortMux) *PortServer {
 
 	return server
 }
-func (s *PortServer) PortConn(port uint8) *PortConn {
+func (s *PortServer) PortConn(src Addr, port uint8) *PortConn {
+	portMux, ok := s.Get(src)
+	if !ok {
+		return nil
+	}
 	return &PortConn{
 		FramePushHandler: s.ApplicatonInterface(),
-		PortMux:          s.PortMux,
+		PortMux:          portMux,
 		Pipe:             NewPipe(),
 		port:             port,
 	}
@@ -296,7 +345,7 @@ func (s *PortServer) Accept() (*PortConn, error) {
 }
 
 func (s *PortServer) Close() error {
-	s.PortMux.Close()
+	s.AddrMux.Close()
 	return s.Pipe.Close()
 }
 
@@ -317,7 +366,7 @@ func (s *PortServer) ApplicatonInterface() FramePushHandler {
 // 是完整解耦合的
 func (s *PortServer) RouterInterface() FrameHandler {
 	return FrameHandlerInterface{
-		push:  s.PortMux.Push,
+		push:  s.AddrMux.Push,
 		poll:  s.Pipe.Poll,
 		close: s.Close,
 	}

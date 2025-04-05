@@ -6,23 +6,23 @@ import (
 	"fmt"
 )
 
-type FrameReader struct {
+type FrameChan struct {
 	// sync.Mutex
 	// errCh  chan error
-	rcvCh  chan frame
+	ch     chan frame
 	closed bool
 }
 
-func NewFrameReader() *FrameReader {
-	return &FrameReader{
+func NewFrameChan() *FrameChan {
+	return &FrameChan{
 		// Mutex: sync.Mutex{},
 		// errCh: make(chan error),
-		rcvCh: make(chan frame),
+		ch: make(chan frame),
 	}
 }
 
-func (r *FrameReader) ReadFrame() (frame, error) {
-	f, ok := <-r.rcvCh
+func (r *FrameChan) ReadFrame() (frame, error) {
+	f, ok := <-r.ch
 	if ok {
 		return f, nil
 	}
@@ -45,15 +45,17 @@ func (r *FrameReader) ReadFrame() (frame, error) {
 	// }
 }
 
-func (r *FrameReader) WriteFrame(f frame) (err error) {
+func (w *FrameChan) WriteFrame(f frame) (err error) {
 	defer func() {
-		recover()
-		err = fmt.Errorf("closed")
+		if e := recover(); e == nil {
+			return
+		}
+		err = fmt.Errorf("closed (recover)")
 	}()
-	if r.closed {
+	if w.closed {
 		return fmt.Errorf("closed")
 	}
-	r.rcvCh <- f
+	w.ch <- f
 	return nil
 }
 
@@ -65,15 +67,12 @@ func (r *FrameReader) WriteFrame(f frame) (err error) {
 // 	return nil
 // }
 
-func (r *FrameReader) Close() error {
-	if r.closed {
+func (c *FrameChan) Close() error {
+	if c.closed {
 		return nil
 	}
-	r.closed = true
-	close(r.rcvCh)
+	c.closed = true
+	close(c.ch)
 	// r.errCh <- fmt.Errorf("closed")
 	return nil
-}
-
-type Reader struct {
 }

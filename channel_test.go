@@ -32,10 +32,11 @@ func TestChannelClose(t *testing.T) {
 }
 
 func TestGC(t *testing.T) {
-	reader := NewFrameReader()
+	reader := NewFrameChan()
 	for {
+		reader.WriteFrame(make([]byte, 1024*1024*1024))
 		reader.Close()
-		reader = NewFrameReader()
+		reader = NewFrameChan()
 	}
 	reader.Close()
 }

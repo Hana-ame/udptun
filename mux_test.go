@@ -62,7 +62,7 @@ func conn(client *PortClient, tag string) *PortConn {
 }
 
 func TestClient(t *testing.T) {
-	mux := NewPortMux()
+	mux := NewPortMux(NewPipe())
 	client := NewPortClient(0, 0, mux)
 	// debug.T("client", client)
 	// rif := client.RouterInterface()
@@ -102,11 +102,13 @@ func testServer(server *PortServer) {
 }
 
 func TestClientServer(t *testing.T) {
-	smux := NewPortMux()
-	server := NewPortServer(33, 44, smux)
+	// spipe := NewPipe()
+	// spmux := NewPortMux(spipe)
+	samux := NewAddrMux()
+	server := NewPortServer(33, 44, samux)
 	go testServer(server)
 
-	cmux := NewPortMux()
+	cmux := NewPortMux(NewPipe())
 	client := NewPortClient(222, 111, cmux)
 
 	go Copy(client.RouterInterface(), server.RouterInterface())

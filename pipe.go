@@ -74,3 +74,19 @@ func Copy(dst, src FrameHandler) error {
 		}
 	}
 }
+
+type VoidPipe struct {
+	error
+}
+
+func (p *VoidPipe) Push(f Frame) (err error) {
+	return
+}
+
+func (p *VoidPipe) Poll() (f Frame, err error) {
+	return nil, p.error
+}
+
+func (p *VoidPipe) Close() error {
+	return p.error
+}

@@ -1,3 +1,6 @@
+// 前面是加一个interface
+// 这里其实本来是自带了一个处理,但是还是嫌弃太多了,所以这边全都用被动的.
+
 package main
 
 import (
@@ -253,7 +256,7 @@ func (m *AddrMux) Push(f Frame) error {
 
 func (m *AddrMux) Close() error {
 	m.ConcurrentHashMap.ForEach(func(key Addr, value *PortMux) {
-		defer value.Close()
+		value.Close()
 	})
 	return m.Pipe.Close()
 }

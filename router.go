@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	tools "github.com/Hana-ame/udptun/Tools"
+	"github.com/Hana-ame/udptun/Tools/debug"
 )
 
 type Sucker struct {
@@ -30,6 +31,67 @@ func NewSucker(i FrameHandler, dst FramePushHandler) *Sucker {
 		}
 	}()
 	return &Sucker{FrameHandler: i, FramePushHandler: dst}
+}
+
+// 未测试.	
+type SimpleEndpoint struct {
+	endpoint FrameHandler
+	mux      FrameHandler
+}
+
+func NewSimpleEndpoint(endpoint, mux FrameHandler) *SimpleEndpoint {
+	r := &SimpleEndpoint{
+		endpoint: endpoint,
+		mux:      mux,
+	}
+	go func() {
+		for {
+			f, e := r.endpoint.Poll()
+			if e != nil {
+				debug.E("simple endpoint", e.Error())
+				return
+			}
+			e = r.mux.Push(f)
+			if e != nil {
+				debug.E("simple endpoint", e.Error())
+				return
+			}
+		}
+	}()
+	go func() {
+		for {
+			f, e := r.mux.Poll()
+			if e != nil {
+				debug.E("simple endpoint", e.Error())
+				return
+			}
+			e = r.endpoint.Push(f)
+			if e != nil {
+				debug.E("simple endpoint", e.Error())
+				return
+			}
+		}
+	}()
+	return r
+}
+
+func (r *SimpleEndpoint) SetEndpoint(endpoint FrameHandler) {
+	r.endpoint.Close()
+	r.endpoint = endpoint
+	go func() {
+		for {
+			f, e := r.endpoint.Poll()
+			if e != nil {
+				debug.E("simple endpoint", e.Error())
+				return
+			}
+			e = r.mux.Push(f)
+			if e != nil {
+				debug.E("simple endpoint", e.Error())
+				return
+			}
+		}
+	}()
 }
 
 // 只能自己建立监听。

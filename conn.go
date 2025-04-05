@@ -6,15 +6,15 @@ import (
 )
 
 type FrameConn struct {
-	src       addr
-	dst       addr
+	src       Addr
+	dst       Addr
 	seq       uint16
 	ack       uint16
-	WriteChan *FrameChan
-	ReadChan  *FrameChan
+	WriteChan Chan
+	ReadChan  Chan
 }
 
-func NewFrameConn(src, dst addr) *FrameConn {
+func NewFrameConn(src, dst Addr) *FrameConn {
 	return &FrameConn{
 		src, dst, 0, 0,
 		NewFrameChan(),

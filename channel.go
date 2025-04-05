@@ -6,6 +6,12 @@ import (
 	"fmt"
 )
 
+type Chan interface {
+	ReadFrame() (frame, error)
+	WriteFrame(frame) error
+	Close() error
+}
+
 type FrameChan struct {
 	// sync.Mutex
 	// errCh  chan error

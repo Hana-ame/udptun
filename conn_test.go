@@ -75,7 +75,7 @@ func TestConn(t *testing.T) {
 	time.Sleep(time.Second / 2)
 
 	e := c.Close()
-	fmt.Println(1, e, c.WriteChan.closed, c.ReadChan.closed)
+	fmt.Println(1, e, c.WriteChan, c.ReadChan)
 
 	time.Sleep(time.Second / 2)
 

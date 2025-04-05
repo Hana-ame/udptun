@@ -19,12 +19,12 @@ func (flag flag) Close() bool { return (flag & FLAG_CLOSE) != 0 }
 func (flag flag) String() string { return strconv.Itoa(int(flag)) }
 
 // 通过最后一位判断是发送方还是接收方
-type addr uint32
+type Addr uint32
 
-func (addr addr) IsSender() bool { return (addr & 1) != 0 }
-func (addr addr) IsServer() bool { return (addr & 1) == 0 }
-func (addr addr) tag() uint32    { return (uint32(addr) & (^uint32(1))) }
-func (addr addr) String() string { return strconv.Itoa(int(addr)) }
+func (addr Addr) IsClient() bool { return (addr & 1) != 0 }
+func (addr Addr) IsServer() bool { return (addr & 1) == 0 }
+func (addr Addr) tag() uint32    { return (uint32(addr) & (^uint32(1))) }
+func (addr Addr) String() string { return strconv.Itoa(int(addr)) }
 
 const (
 	MTU = 1024
@@ -32,11 +32,11 @@ const (
 
 type frame []byte
 
-func (f frame) src() addr {
-	return addr(binary.BigEndian.Uint32(f[0:4]))
+func (f frame) src() Addr {
+	return Addr(binary.BigEndian.Uint32(f[0:4]))
 }
-func (f frame) dst() addr {
-	return addr(binary.BigEndian.Uint32(f[4:8]))
+func (f frame) Dst() Addr {
+	return Addr(binary.BigEndian.Uint32(f[4:8]))
 }
 
 func (f frame) seq() uint16 {
@@ -59,7 +59,7 @@ func (f frame) dataLength() int {
 	return len(f) - 13
 }
 
-func Frame(src, dst addr, seq, ack uint16, flag flag, data []byte) frame {
+func Frame(src, dst Addr, seq, ack uint16, flag flag, data []byte) frame {
 	f := make([]byte, 13+len(data))
 	binary.BigEndian.PutUint32(f[0:4], uint32(src))
 	binary.BigEndian.PutUint32(f[4:8], uint32(dst))
@@ -72,5 +72,5 @@ func Frame(src, dst addr, seq, ack uint16, flag flag, data []byte) frame {
 
 func (f frame) String() string {
 	return fmt.Sprintf("src:%d,dst:%d,seq:%d,ack:%d,flag:%d,dataLength:%d",
-		f.src(), f.dst(), f.seq(), f.ack(), f.Flags(), f.dataLength())
+		f.src(), f.Dst(), f.seq(), f.ack(), f.Flags(), f.dataLength())
 }

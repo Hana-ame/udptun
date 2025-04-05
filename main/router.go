@@ -37,13 +37,13 @@ func NewSucker(i FrameHandler, dst FramePushHandler) *Sucker {
 
 type Router struct {
 	FrameHandler // 默认路由
-	*tools.ConcurrentHashMap[Addr, FrameHandler]
+	*tools.ConcurrentHashMap[addr, FrameHandler]
 }
 
 func NewRouter(i FrameHandler) *Router {
 	return &Router{
 		FrameHandler:      i,
-		ConcurrentHashMap: tools.NewConcurrentHashMap[Addr, FrameHandler](),
+		ConcurrentHashMap: tools.NewConcurrentHashMap[addr, FrameHandler](),
 	}
 }
 

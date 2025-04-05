@@ -122,8 +122,8 @@ func NewPortMux(pipe *Pipe) *PortMux {
 }
 
 type PortClient struct {
-	local  Addr
-	remote Addr
+	local  addr
+	remote addr
 
 	port uint8
 
@@ -131,7 +131,7 @@ type PortClient struct {
 	*Pipe
 }
 
-func NewPortClient(local, remote Addr, mux *PortMux) *PortClient {
+func NewPortClient(local, remote addr, mux *PortMux) *PortClient {
 	client := &PortClient{
 		local:  local,
 		remote: remote,
@@ -228,8 +228,8 @@ func (c *PortClient) RouterInterface() FrameHandler {
 }
 
 type PortServer struct {
-	local  Addr
-	remote Addr
+	local  addr
+	remote addr
 
 	AcceptChan chan *PortConn
 
@@ -239,7 +239,7 @@ type PortServer struct {
 
 // 单向
 type AddrMux struct {
-	*tools.ConcurrentHashMap[Addr, *PortMux] // port, router interface
+	*tools.ConcurrentHashMap[addr, *PortMux] // port, router interface
 
 	*Pipe
 }
@@ -252,7 +252,7 @@ func (m *AddrMux) Push(f Frame) error {
 }
 
 func (m *AddrMux) Close() error {
-	m.ConcurrentHashMap.ForEach(func(key Addr, value *PortMux) {
+	m.ConcurrentHashMap.ForEach(func(key addr, value *PortMux) {
 		defer value.Close()
 	})
 	return m.Pipe.Close()
@@ -260,12 +260,12 @@ func (m *AddrMux) Close() error {
 
 func NewAddrMux() *AddrMux {
 	return &AddrMux{
-		ConcurrentHashMap: tools.NewConcurrentHashMap[Addr, *PortMux](),
+		ConcurrentHashMap: tools.NewConcurrentHashMap[addr, *PortMux](),
 		Pipe:              NewPipe(),
 	}
 }
 
-func NewPortServer(local, remote Addr, mux *AddrMux) *PortServer {
+func NewPortServer(local, remote addr, mux *AddrMux) *PortServer {
 	server := &PortServer{
 		local:  local,
 		remote: remote,
@@ -326,7 +326,7 @@ func NewPortServer(local, remote Addr, mux *AddrMux) *PortServer {
 
 	return server
 }
-func (s *PortServer) PortConn(src Addr, port uint8) *PortConn {
+func (s *PortServer) PortConn(src addr, port uint8) *PortConn {
 	portMux, ok := s.Get(src)
 	if !ok {
 		return nil

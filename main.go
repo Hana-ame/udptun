@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Hana-ame/udptun/helper"
+	"github.com/Hana-ame/udptun/utils"
 	"github.com/gorilla/mux"
-	"github.com/hana-ame/udptun/helper"
-	"github.com/hana-ame/udptun/utils"
 )
 
 var p *Portal

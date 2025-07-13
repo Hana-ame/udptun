@@ -2,6 +2,18 @@ package main
 
 import "fmt"
 
+type TraceError struct {
+	Msg      string
+	File     string
+	Line     int
+	FuncName string
+}
+
+func (e *TraceError) Error() string {
+	return fmt.Sprintf("%s [File] %s [Line] %d [Func] %s",
+		e.Msg, e.File, e.Line, e.FuncName)
+}
+
 type doubleError struct {
 	tags   [2]string
 	errors [2]error

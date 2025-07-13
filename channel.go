@@ -1,84 +1,48 @@
-// 失去任何引用时是否会回收？
-
 package main
 
-import (
-	"fmt"
-)
+import "fmt"
 
-type Chan interface {
-	ReadFrame() (frame, error)
-	WriteFrame(frame) error
-	Close() error
+type ReadChan[T any] (chan T)
+type WriteChan[T any] (chan T)
+
+func (c ReadChan[T]) Read() (T, bool) {
+	v, ok := <-c
+	return v, ok
+}
+func (c WriteChan[T]) Write(data T) {
+	c <- data
 }
 
-type FrameChan struct {
-	// sync.Mutex
-	// errCh  chan error
-	ch     chan frame
+type IChan[T any] interface {
+	ReadChan[T]
+	WriteChan[T]
+}
+
+type Chan struct {
+	ReadChan[frame]
+	WriteChan[frame]
+	// status
 	closed bool
+	// config
+	src uint32
+	dst uint32
 }
 
-func NewFrameChan() *FrameChan {
-	return &FrameChan{
-		// Mutex: sync.Mutex{},
-		// errCh: make(chan error),
-		ch: make(chan frame),
-	}
-}
-
-func (r *FrameChan) ReadFrame() (frame, error) {
-	f, ok := <-r.ch
-	if ok {
-		return f, nil
-	}
-	return nil, fmt.Errorf("closed")
-	// if r.closed {
-	// 	return nil, fmt.Errorf("closed")
-	// }
-	// select {
-	// case f, ok := <-r.rcvCh:
-	// 	if ok {
-	// 		return f, nil
-	// 	}
-	// 	r.errCh <- fmt.Errorf("rcv channel closed")
-	// 	return nil, fmt.Errorf("rcv channel closed")
-	// case err, ok := <-r.errCh:
-	// 	if ok {
-	// 		return nil, err
-	// 	}
-	// 	return nil, fmt.Errorf("err channel closed")
-	// }
-}
-
-func (w *FrameChan) WriteFrame(f frame) (err error) {
-	defer func() {
-		if e := recover(); e == nil {
-			return
-		}
-		err = fmt.Errorf("closed (recover)")
-	}()
-	if w.closed {
-		return fmt.Errorf("closed")
-	}
-	w.ch <- f
+func (c *Chan) Close() error {
+	c.closed = true
 	return nil
 }
 
-// func (r *FrameReader) WriteError(err error) error {
-// 	if r.closed {
-// 		return fmt.Errorf("closed")
-// 	}
-// 	r.errCh <- err
-// 	return nil
-// }
-
-func (c *FrameChan) Close() error {
+func (c *Chan) Write(data []byte) error {
 	if c.closed {
-		return nil
+		return fmt.Errorf("chan: write to a closed chan")
 	}
 	c.closed = true
-	close(c.ch)
-	// r.errCh <- fmt.Errorf("closed")
 	return nil
+}
+
+func (c *Chan) Read() ([]byte, error) {
+	data := <-c.ReadChan
+
+	return data, nil
 }

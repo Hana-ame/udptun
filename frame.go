@@ -1,76 +1,62 @@
 package main
 
-import (
-	"encoding/binary"
-	"fmt"
-	"strconv"
-)
-
-type flag byte
+import "encoding/binary"
 
 const (
-	FLAG_CLOSE flag = 1 << iota
+	HEADER_OFFSET = 12
 
-	FLAG_DATA flag = 0
+	SYN byte = 0b0000_0001
+	FIN byte = 0b0000_0010
 )
 
-func (flag flag) Close() bool { return (flag & FLAG_CLOSE) != 0 }
+type flag []byte
 
-func (flag flag) String() string { return strconv.Itoa(int(flag)) }
+func (flag flag) isSYN() bool {
+	return flag[0] == SYN
+}
 
-// 通过最后一位判断是发送方还是接收方
-type Addr uint32
+func (flag flag) setSYN(value bool) {
+	if value {
+		flag[0] = flag[0] | SYN
+	} else {
+		flag[0] = ^((^flag[0]) & (^SYN))
+	}
+}
 
-func (addr Addr) IsClient() bool { return (addr & 1) != 0 }
-func (addr Addr) IsServer() bool { return (addr & 1) == 0 }
-func (addr Addr) tag() uint32    { return (uint32(addr) & (^uint32(1))) }
-func (addr Addr) String() string { return strconv.Itoa(int(addr)) }
+func (flag flag) isFIN() bool {
+	return flag[0] == FIN
+}
 
-const (
-	MTU = 1024
-)
+func (flag flag) setFIN(value bool) {
+	if value {
+		flag[0] = flag[0] | FIN
+	} else {
+		flag[0] = ^((^flag[0]) & (^FIN))
+	}
+}
 
 type frame []byte
 
-func (f frame) src() Addr {
-	return Addr(binary.BigEndian.Uint32(f[0:4]))
-}
-func (f frame) Dst() Addr {
-	return Addr(binary.BigEndian.Uint32(f[4:8]))
+func (f frame) src() uint32 {
+	return binary.BigEndian.Uint32(f[0:4])
 }
 
-func (f frame) seq() uint16 {
-	return binary.BigEndian.Uint16(f[8:10])
+func (f frame) dst() uint32 {
+	return binary.BigEndian.Uint32(f[4:8])
 }
 
-func (f frame) ack() uint16 {
+func (f frame) reserved() byte {
+	return f[8]
+}
+
+func (f frame) flag() flag {
+	return flag(f[9:10])
+}
+
+func (f frame) dataLength() uint16 {
 	return binary.BigEndian.Uint16(f[10:12])
 }
 
-func (f frame) Flags() flag {
-	return flag(f[12])
-}
-
 func (f frame) data() []byte {
-	return f[13:]
-}
-
-func (f frame) dataLength() int {
-	return len(f) - 13
-}
-
-func Frame(src, dst Addr, seq, ack uint16, flag flag, data []byte) frame {
-	f := make([]byte, 13+len(data))
-	binary.BigEndian.PutUint32(f[0:4], uint32(src))
-	binary.BigEndian.PutUint32(f[4:8], uint32(dst))
-	binary.BigEndian.PutUint16(f[8:10], seq)
-	binary.BigEndian.PutUint16(f[10:12], ack)
-	f[12] = byte(flag)
-	copy(f[13:], data)
-	return f
-}
-
-func (f frame) String() string {
-	return fmt.Sprintf("src:%d,dst:%d,seq:%d,ack:%d,flag:%d,dataLength:%d",
-		f.src(), f.Dst(), f.seq(), f.ack(), f.Flags(), f.dataLength())
+	return f[HEADER_OFFSET:]
 }
